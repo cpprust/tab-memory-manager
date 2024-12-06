@@ -26,11 +26,11 @@ For tab memory management strategies, there are three approaches:
 
 ## Usage
 
-- Install browser extension "tabs-info"
+- Install browser extension "tab-infos"
 
   The extension only work with Chromium **dev channel** (Need permission `processes` which only on dev channel).
 
-  Manage extension > check Developer mode > Load unpacked > Select tabs-info
+  Manage extension > check Developer mode > Load unpacked > Select tab-infos
 
 - Build and run "tab-memory-manager"
 
