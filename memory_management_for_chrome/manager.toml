@@ -1,6 +1,0 @@
-[chrome_memory_manager]
-strategy = "memory_change_rate" # rss_limit, idel_time_limit, memory_change_rate
-reflush_time = 3     # second
-memory_change_rate = 0.05 # 0.5 means 50%
-rss_limit = 100_000 # KB
-idel_time_limit = 30000 # second

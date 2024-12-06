@@ -1,0 +1,23 @@
+# Kill the most memory consuming tab in the background with the given strategy
+# Options: rss_limit, memory_change_rate, idle_time_limit
+kill_tab_strategy = "rss_limit"
+
+# Check interval of choosen strategy
+# Range: 0.0 ~ inf
+check_interval_secs = 1.0
+
+# Kill the tab if all tabs total resident set size (physical memory usage) hit limit
+[strategy.rss_limit]
+# Range: 0 ~ 18_446_744_073_709_551_615
+max_bytes = 2_000_000_000
+
+# Kill the tab if change rate is too low (not being used)
+[strategy.memory_change_rate]
+# Range: 0.0 ~ 1.0
+min_rate = 0.5
+
+# Kill the tab if idle time is too long
+[strategy.idle_time_limit]
+# Range: 0.0 ~ inf
+max_secs = 30000.0
+

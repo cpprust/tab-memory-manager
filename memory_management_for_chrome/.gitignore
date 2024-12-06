@@ -1,7 +1,0 @@
-/target
-
-# Generate by server.py, it listen message from browser plugin and write to file
-log.json
-
-# Generate by TabManager
-output.json

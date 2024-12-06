@@ -18,13 +18,13 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
+  "id": 4,
   "links": [],
   "panels": [
     {
       "datasource": {
         "type": "marcusolsson-json-datasource",
-        "uid": "ae4zewlvji9kwc"
+        "uid": "ee62sdcrrfev4a"
       },
       "fieldConfig": {
         "defaults": {
@@ -36,7 +36,7 @@
             "align": "auto",
             "cellOptions": {
               "type": "auto",
-              "wrapText": true
+              "wrapText": false
             },
             "inspect": false
           },
@@ -53,7 +53,8 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "locale"
         },
         "overrides": []
       },
@@ -80,11 +81,11 @@
         "sortBy": [
           {
             "desc": true,
-            "displayName": "tab_rss"
+            "displayName": "rss"
           }
         ]
       },
-      "pluginVersion": "11.3.1",
+      "pluginVersion": "11.3.0-pre",
       "targets": [
         {
           "cacheDurationSeconds": "0.1",
@@ -94,20 +95,25 @@
           },
           "fields": [
             {
-              "jsonPath": "$.tab_info_instance[*].tab_name"
+              "jsonPath": "$[*].title"
             },
             {
-              "jsonPath": "$.tab_info_instance[*].tab_process_id",
+              "jsonPath": "$[*].pid",
               "language": "jsonpath",
               "name": ""
             },
             {
-              "jsonPath": "$.tab_info_instance[*].tab_rss",
+              "jsonPath": "$[*].rss",
               "language": "jsonpath",
               "name": ""
             },
             {
-              "jsonPath": "$.tab_info_instance[*].is_active",
+              "jsonPath": "$[*].active",
+              "language": "jsonpath",
+              "name": ""
+            },
+            {
+              "jsonPath": "$[*].cpu_usage",
               "language": "jsonpath",
               "name": ""
             }
@@ -118,13 +124,13 @@
           "urlPath": ""
         }
       ],
-      "title": "Chrome tabs Memory Usage",
+      "title": "Tabs",
       "type": "table"
     },
     {
       "datasource": {
         "type": "marcusolsson-json-datasource",
-        "uid": "ae4zewlvji9kwc"
+        "uid": "ee62sdcrrfev4a"
       },
       "fieldConfig": {
         "defaults": {
@@ -144,6 +150,8 @@
               "type": "value"
             }
           ],
+          "max": 2000000000,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -153,14 +161,15 @@
               },
               {
                 "color": "#EAB839",
-                "value": 50000
+                "value": 1000000000
               },
               {
                 "color": "semi-dark-red",
-                "value": 100000
+                "value": 1500000000
               }
             ]
-          }
+          },
+          "unit": "locale"
         },
         "overrides": []
       },
@@ -187,13 +196,13 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "11.3.1",
+      "pluginVersion": "11.3.0-pre",
       "targets": [
         {
           "cacheDurationSeconds": 300,
           "fields": [
             {
-              "jsonPath": "$.tab_info_instance[*].tab_rss"
+              "jsonPath": "$[*].rss"
             }
           ],
           "method": "GET",
@@ -202,19 +211,20 @@
           "urlPath": ""
         }
       ],
-      "title": "Total Chrome Memory Usage",
+      "title": "Total memory usage",
       "type": "gauge"
     },
     {
       "datasource": {
         "type": "marcusolsson-json-datasource",
-        "uid": "ae4zewlvji9kwc"
+        "uid": "ee62sdcrrfev4a"
       },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
+          "fieldMinMax": false,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -225,14 +235,15 @@
               },
               {
                 "color": "#EAB839",
-                "value": 50000
+                "value": 400000000
               },
               {
                 "color": "red",
-                "value": 100000
+                "value": 500000000
               }
             ]
-          }
+          },
+          "unit": "locale"
         },
         "overrides": []
       },
@@ -250,7 +261,7 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "maxVizHeight": 300,
         "minVizHeight": 16,
@@ -268,19 +279,19 @@
         "sizing": "auto",
         "valueMode": "color"
       },
-      "pluginVersion": "11.3.1",
+      "pluginVersion": "11.3.0-pre",
       "targets": [
         {
           "body": "",
           "cacheDurationSeconds": 300,
           "fields": [
             {
-              "jsonPath": "$.tab_info_instance[*].tab_name",
+              "jsonPath": "$[*].title",
               "language": "jsonpath",
               "name": ""
             },
             {
-              "jsonPath": "$.tab_info_instance[*].tab_rss",
+              "jsonPath": "$[*].rss",
               "language": "jsonpath",
               "name": ""
             }
@@ -291,12 +302,26 @@
           "urlPath": ""
         }
       ],
-      "title": "Tabs Memory Usage",
+      "title": "Tabs memory usage",
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "rss"
+              }
+            ]
+          }
+        }
+      ],
       "type": "bargauge"
     }
   ],
   "preload": false,
-  "refresh": "5s",
+  "refresh": "1s",
   "schemaVersion": 40,
   "tags": [],
   "templating": {
@@ -306,10 +331,18 @@
     "from": "now-5m",
     "to": "now"
   },
-  "timepicker": {},
+  "timepicker": {
+    "refresh_intervals": [
+      "500ms",
+      "1s",
+      "3s",
+      "5s",
+      "10s"
+    ]
+  },
   "timezone": "browser",
-  "title": "Chrome tabs Memory Usage",
+  "title": "Tab Memory Usage",
   "uid": "be4zr924v2dj4d",
-  "version": 30,
+  "version": 12,
   "weekStart": ""
 }
