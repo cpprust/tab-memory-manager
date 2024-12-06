@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
     thread::{spawn, JoinHandle},
 };
@@ -50,67 +50,75 @@ pub fn spawn_tab_infos_listener(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>) ->
 
 fn listen_for_tab_infos(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>) {
     listen("127.0.0.1:8080", move |_| {
-            let tab_infos = Arc::clone(&tab_infos); // todo!
+            let tab_infos = Arc::clone(&tab_infos);
             move |msg| {
                 if let Message::Text(msg) = msg {
                     match serde_json::from_str::<Vec<TabInfo>>(&msg) {
                         Ok(recieved_tab_infos) => {
                             let system = System::new_all();
 
-                            // Get pid map
-                            let mut browser_inner_pid_to_pid: HashMap<BrowserInnerPid, Pid> =
-                                HashMap::new();
-                            for process in system.processes_by_exact_name(BROWSER_NAME.as_ref()) {
-                                let cmdline = match process.cmd().first() {
-                                    Some(cmdline) => cmdline,
-                                    None => {
-                                        eprintln!("Process {} cmdline of is empty!", process.pid());
-                                        continue;
-                                    }
-                                };
-                                let cmdline = match cmdline.to_str() {
-                                    Some(cmdline) => cmdline,
-                                    None => {
-                                        eprintln!(
-                                            "Process {} cmdline have invalid UTF-8 data: {:?}",
-                                            process.pid(),
-                                            cmdline
-                                        );
-                                        continue;
-                                    }
-                                };
-                                let target_arg = cmdline
-                                    .split_whitespace()
-                                    .filter(|arg| arg.starts_with("--renderer-client-id="))
-                                    .next();
-                                let target_arg = match target_arg {
-                                    Some(target_arg) => target_arg,
-                                    None => {
-                                        // No target flag in this cmdline, skipped
-                                        continue;
-                                    }
-                                };
-                                let browser_inner_pid = target_arg
-                                    .split('=')
-                                    .nth(1);
-                                let browser_inner_pid = match browser_inner_pid {
-                                    Some(browser_inner_pid) => {
-                                        browser_inner_pid.parse::<BrowserInnerPid>()
-                                    }
-                                    None => {
-                                        eprintln!("Process {}, no number after arg \"renderer-client-id=\", cmdline: {}", process.pid(), cmdline);
-                                        continue;
-                                    },
-                                };
-                                let browser_inner_pid = match browser_inner_pid {
-                                    Ok(browser_inner_pid) => browser_inner_pid,
-                                    Err(e) => {
-                                        eprintln!("Cannot find pid from cmdline arg: {}", e);
-                                        continue;
-                                    }
-                                };
-                                browser_inner_pid_to_pid.insert(browser_inner_pid, process.pid());
-                            }
+                            // If given tab infos inner pid are the same as last time, use the old pid map
+                            let last_loop_browser_inner_pids: HashSet<BrowserInnerPid> = tab_infos.lock().unwrap().values().map(|tab_info| tab_info.browser_inner_pid).collect();
+                            let same_tabs_as_last_update = recieved_tab_infos.iter().all(|recieved_tab_info| last_loop_browser_inner_pids.contains(&recieved_tab_info.browser_inner_pid)) && recieved_tab_infos.len() == last_loop_browser_inner_pids.len();
+                            let browser_inner_pid_to_pid: HashMap<BrowserInnerPid, Pid> = if same_tabs_as_last_update {
+                                 tab_infos.lock().unwrap().iter().map(|(pid, tab_info)| (tab_info.browser_inner_pid, *pid)).collect()
+                            } else {
+                                // Get new pid map
+                                let mut browser_inner_pid_to_pid: HashMap<BrowserInnerPid, Pid> =
+                                    HashMap::new();
+                                for process in system.processes_by_exact_name(BROWSER_NAME.as_ref()) {
+                                    let cmdline = match process.cmd().first() {
+                                        Some(cmdline) => cmdline,
+                                        None => {
+                                            eprintln!("Process {} cmdline of is empty!", process.pid());
+                                            continue;
+                                        }
+                                    };
+                                    let cmdline = match cmdline.to_str() {
+                                        Some(cmdline) => cmdline,
+                                        None => {
+                                            eprintln!(
+                                                "Process {} cmdline have invalid UTF-8 data: {:?}",
+                                                process.pid(),
+                                                cmdline
+                                            );
+                                            continue;
+                                        }
+                                    };
+                                    let target_arg = cmdline
+                                        .split_whitespace()
+                                        .filter(|arg| arg.starts_with("--renderer-client-id="))
+                                        .next();
+                                    let target_arg = match target_arg {
+                                        Some(target_arg) => target_arg,
+                                        None => {
+                                            // No target flag in this cmdline, skipped
+                                            continue;
+                                        }
+                                    };
+                                    let browser_inner_pid = target_arg
+                                        .split('=')
+                                        .nth(1);
+                                    let browser_inner_pid = match browser_inner_pid {
+                                        Some(browser_inner_pid) => {
+                                            browser_inner_pid.parse::<BrowserInnerPid>()
+                                        }
+                                        None => {
+                                            eprintln!("Process {}, no number after arg \"renderer-client-id=\", cmdline: {}", process.pid(), cmdline);
+                                            continue;
+                                        },
+                                    };
+                                    let browser_inner_pid = match browser_inner_pid {
+                                        Ok(browser_inner_pid) => browser_inner_pid,
+                                        Err(e) => {
+                                            eprintln!("Cannot find pid from cmdline arg: {}", e);
+                                            continue;
+                                        }
+                                    };
+                                    browser_inner_pid_to_pid.insert(browser_inner_pid, process.pid());
+                                }
+                                browser_inner_pid_to_pid
+                            };
 
                             // Update tab infos
                             let mut new_tab_infos = HashMap::<Pid, TabInfo>::new();
@@ -123,6 +131,7 @@ fn listen_for_tab_infos(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>) {
                                 new_tab_infos.insert(pid, tab_info);
                             }
                             *tab_infos.lock().unwrap() = new_tab_infos;
+
                         }
                         Err(e) => eprintln!("Failed to parse json: {e}\nError data: {msg}"),
                     }

@@ -30,7 +30,7 @@ pub fn spawn_mini_tab_infos_server(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>)
 }
 
 fn serve_mini_tab_info(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>, addr: impl ToSocketAddrs) {
-    let system = Arc::new(Mutex::new(System::new_all()));
+    let system = Mutex::new(System::new_all());
     Server::bind(addr)
         .serve(move |_, _| {
             system.lock().unwrap().refresh_all();
