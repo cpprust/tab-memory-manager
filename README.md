@@ -8,22 +8,6 @@ By setting these parameters, users can decide how the program handles memory ass
 
 ![grafana-dashboard-preview](assets/architecture.webp)
 
-For tab memory management strategies, there are three approaches:
-
-- RSS Limit Strategy
-
-  When the memory usage reaches the given rss_limit, the manager releases memory from tabs (excluding the foreground tab) starting with the ones consuming the most memory, until the total memory usage falls below the rss_limit.
-
-- Idle Time Strategy (🚧 Not implemented)
-
-  Based on the user-defined idle time, the manager evaluates the memory usage changes of each tab.
-  
-  Tabs that show no significant memory usage variation within the idle_time and are not in the foreground are considered idle and have their resources released.
-
-- Memory Change Rate Strategy (🚧 Not implemented)
-
-  Determine whether the page is an idle page based on the change amount of the paging memory within the specified time, and the idle page will be released.
-
 ## Usage
 
 - Install browser extension "tab-infos"
@@ -39,6 +23,39 @@ For tab memory management strategies, there are three approaches:
   ```shell
   cargo run -r
   ```
+
+## Config
+
+Config is "~/.config/tab-memory-manager.toml" on Linux, check [config dir](https://docs.rs/dirs/latest/dirs/fn.config_dir.html).
+
+If it is gone or corrupted, it will be overwrite with default config.
+
+```toml
+# Kill the most memory consuming tab in the background with the given strategy
+# Options: rss_limit, memory_change_rate, idle_time_limit
+kill_tab_strategy = "rss_limit"
+
+# Check interval of choosen strategy
+# Range: 0.0 ~ inf
+check_interval_secs = 1.0
+
+# Kill the tab if all tabs total resident set size (physical memory usage) hit limit
+[strategy.rss_limit]
+# Range: 0 ~ 18_446_744_073_709_551_615
+max_bytes = 2_000_000_000
+
+# Kill the tab if change rate is too low (not being used)
+# 🚧 Not implemented
+[strategy.memory_change_rate]
+# Range: 0.0 ~ 1.0
+min_rate = 0.5
+
+# Kill the tab if idle time is too long
+# 🚧 Not implemented
+[strategy.idle_time_limit]
+# Range: 0.0 ~ inf
+max_secs = 30000.0
+```
 
 ## Grafana dashboard (optional)
 
