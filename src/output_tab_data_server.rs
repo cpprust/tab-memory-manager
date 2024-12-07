@@ -76,7 +76,11 @@ fn generate_output_tab_infos(
                     rss: process.memory(),
                     active: tab_info.active,
                     cpu_usage: process.cpu_usage(),
-                    idle_time_secs: (status.timestamp - begin_idle_timestamp) / 1000.0,
+                    idle_time_secs: if tab_info.active {
+                        0.0
+                    } else {
+                        (status.timestamp - begin_idle_timestamp) / 1000.0
+                    },
                 })
             } else {
                 None
