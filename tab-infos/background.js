@@ -11,7 +11,10 @@ async function getTabInfos() {
     return tabInfo;
   }));
 
-  return tabInfos;
+  return {
+    timestamp: Date.now(),
+    tabInfos,
+  };
 }
 
 async function sendObjAsJson(obj) {

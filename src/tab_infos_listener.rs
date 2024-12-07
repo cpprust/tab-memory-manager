@@ -8,14 +8,15 @@ use serde::{Deserialize, Serialize};
 use sysinfo::{Pid, System};
 use ws::{listen, Message};
 
-use crate::BROWSER_NAME;
+use crate::{Status, BROWSER_NAME};
 
 pub type BrowserInnerPid = u64;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MutedInfo {
-    pub muted: bool,
+pub struct InputTabData {
+    timestamp: f64,
+    tab_infos: Vec<TabInfo>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -44,24 +45,30 @@ pub struct TabInfo {
     pub browser_inner_pid: BrowserInnerPid,
 }
 
-pub fn spawn_tab_infos_listener(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>) -> JoinHandle<()> {
-    spawn(move || listen_for_tab_infos(tab_infos))
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MutedInfo {
+    pub muted: bool,
 }
 
-fn listen_for_tab_infos(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>) {
+pub fn spawn_tab_data_listener(status: Arc<Mutex<Status>>) -> JoinHandle<()> {
+    spawn(move || listen_for_tab_data(status))
+}
+
+fn listen_for_tab_data(status: Arc<Mutex<Status>>) {
     listen("127.0.0.1:8080", move |_| {
-            let tab_infos = Arc::clone(&tab_infos);
+            let status = Arc::clone(&status);
             move |msg| {
                 if let Message::Text(msg) = msg {
-                    match serde_json::from_str::<Vec<TabInfo>>(&msg) {
-                        Ok(recieved_tab_infos) => {
+                    match serde_json::from_str::<InputTabData>(&msg) {
+                        Ok(input_tab_data) => {
                             let system = System::new_all();
 
                             // If given tab infos inner pid are the same as last time, use the old pid map
-                            let last_loop_browser_inner_pids: HashSet<BrowserInnerPid> = tab_infos.lock().unwrap().values().map(|tab_info| tab_info.browser_inner_pid).collect();
-                            let same_tabs_as_last_update = recieved_tab_infos.iter().all(|recieved_tab_info| last_loop_browser_inner_pids.contains(&recieved_tab_info.browser_inner_pid)) && recieved_tab_infos.len() == last_loop_browser_inner_pids.len();
+                            let last_loop_browser_inner_pids: HashSet<BrowserInnerPid> = status.lock().unwrap().tab_infos.values().map(|tab_info| tab_info.browser_inner_pid).collect();
+                            let same_tabs_as_last_update = input_tab_data.tab_infos.iter().all(|recieved_tab_info| last_loop_browser_inner_pids.contains(&recieved_tab_info.browser_inner_pid)) && input_tab_data.tab_infos.len() == last_loop_browser_inner_pids.len();
                             let browser_inner_pid_to_pid: HashMap<BrowserInnerPid, Pid> = if same_tabs_as_last_update {
-                                 tab_infos.lock().unwrap().iter().map(|(pid, tab_info)| (tab_info.browser_inner_pid, *pid)).collect()
+                                 status.lock().unwrap().tab_infos.iter().map(|(pid, tab_info)| (tab_info.browser_inner_pid, *pid)).collect()
                             } else {
                                 // Get new pid map
                                 let mut browser_inner_pid_to_pid: HashMap<BrowserInnerPid, Pid> =
@@ -122,7 +129,7 @@ fn listen_for_tab_infos(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>) {
 
                             // Update tab infos
                             let mut new_tab_infos = HashMap::<Pid, TabInfo>::new();
-                            for tab_info in recieved_tab_infos {
+                            for tab_info in input_tab_data.tab_infos {
                                 let pid = browser_inner_pid_to_pid.get(&tab_info.browser_inner_pid);
                                 let pid = match pid {
                                     Some(pid) => *pid,
@@ -130,7 +137,8 @@ fn listen_for_tab_infos(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>) {
                                 };
                                 new_tab_infos.insert(pid, tab_info);
                             }
-                            *tab_infos.lock().unwrap() = new_tab_infos;
+                            (*status.lock().unwrap()).tab_infos = new_tab_infos;
+                            (*status.lock().unwrap()).last_update_timestamp = input_tab_data.timestamp;
 
                         }
                         Err(e) => eprintln!("Failed to parse json: {e}\nError data: {msg}"),

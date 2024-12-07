@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     sync::{Arc, Mutex},
     thread::{sleep, spawn, JoinHandle},
     time::Duration,
@@ -10,38 +9,37 @@ use thousands::Separable;
 
 use crate::{
     config::{Config, KillTabStrategy},
-    tab_infos_listener::TabInfo,
-    BROWSER_NAME,
+    Status, BROWSER_NAME,
 };
 
-pub fn spawn_tab_killer_thread(
-    tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>,
-    config: Config,
-) -> JoinHandle<()> {
+pub fn spawn_tab_killer_thread(status: Arc<Mutex<Status>>, config: Config) -> JoinHandle<()> {
     spawn(move || {
+        // The duration loop sleep for
         let tick = Duration::from_secs_f32(config.check_interval_secs);
         loop {
-            kill_tabs_by_strategy(tab_infos.clone(), &config);
+            kill_tabs_by_strategy(status.clone(), &config);
 
             sleep(tick);
         }
     })
 }
 
-fn kill_tabs_by_strategy(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>, config: &Config) {
+fn kill_tabs_by_strategy(status: Arc<Mutex<Status>>, config: &Config) {
+    // Clear stat if browser closed
     let system = System::new_all();
     let browser_process_count = system
         .processes_by_exact_name(BROWSER_NAME.as_ref())
         .count();
     if browser_process_count == 0 {
-        // Browser is not opened, clear the stat
-        tab_infos.lock().unwrap().clear();
+        status.lock().unwrap().tab_infos.clear();
     }
 
-    println!("{:?}", tab_infos.lock().unwrap());
-    let total_rss: u64 = tab_infos
+    // Print stat
+    println!("{:?}", status.lock().unwrap());
+    let total_rss: u64 = status
         .lock()
         .unwrap()
+        .tab_infos
         .keys()
         .map(|pid| {
             if let Some(process) = system.processes().get(pid) {
@@ -53,7 +51,8 @@ fn kill_tabs_by_strategy(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>, config: &
         .sum();
     println!("total_rss: {}", total_rss.separate_with_commas());
 
-    if tab_infos.lock().unwrap().len() > 0 {
+    // Apply kill tab startegies
+    if status.lock().unwrap().tab_infos.len() > 0 {
         for kill_tab_strategy in &config.kill_tab_strategies {
             // Apply strategy
             match kill_tab_strategy {
@@ -67,9 +66,10 @@ fn kill_tabs_by_strategy(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>, config: &
 
                         type Rss = u64;
                         // The background tab processes pid and rss, sorted by rss
-                        let mut sorted_pid_rss: Vec<(Pid, Rss)> = tab_infos
+                        let mut sorted_pid_rss: Vec<(Pid, Rss)> = status
                             .lock()
                             .unwrap()
+                            .tab_infos
                             .iter()
                             .filter(|(_pid, tab_info)| !tab_info.active)
                             .map(|(&pid, _tab_info)| {

@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     net::ToSocketAddrs,
     sync::{Arc, Mutex},
     thread::{spawn, JoinHandle},
@@ -7,13 +6,19 @@ use std::{
 
 use astra::{Body, Response, Server};
 use serde::{Deserialize, Serialize};
-use sysinfo::{Pid, System};
+use sysinfo::System;
 
-use crate::tab_infos_listener::TabInfo;
+use crate::Status;
 
-/// Carrying minimal tab information, for sharing to frontend
+/// The data is for sharing to frontend
 #[derive(Debug, Deserialize, Serialize)]
-struct MiniTabInfo {
+struct OutputTabData {
+    last_update_timestamp: f64,
+    tab_infos: Vec<OutputTabInfo>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct OutputTabInfo {
     active: bool,
     pid: u32,
     // Resident set size
@@ -22,25 +27,26 @@ struct MiniTabInfo {
     cpu_usage: f32,
 }
 
-pub fn spawn_mini_tab_infos_server(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>) -> JoinHandle<()> {
+pub fn spawn_output_tab_data_server(status: Arc<Mutex<Status>>) -> JoinHandle<()> {
     spawn(move || {
         let addr = "127.0.0.1:5000";
-        serve_mini_tab_info(tab_infos, addr);
+        serve_output_tab_data(status, addr);
     })
 }
 
-fn serve_mini_tab_info(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>, addr: impl ToSocketAddrs) {
+fn serve_output_tab_data(status: Arc<Mutex<Status>>, addr: impl ToSocketAddrs) {
     // Must ramain stat for statistics cpu_usage
     let system = Mutex::new(System::new_all());
     Server::bind(addr)
         .serve(move |_, _| {
             system.lock().unwrap().refresh_all();
             // Get each minimum tab info
-            let mini_tab_infos: Vec<MiniTabInfo> = (*tab_infos.lock().unwrap())
+            let output_tab_infos: Vec<OutputTabInfo> = (*status.lock().unwrap())
+                .tab_infos
                 .iter()
                 .map(|(pid, tab_info)| {
                     if let Some(process) = system.lock().unwrap().processes().get(pid) {
-                        Some(MiniTabInfo {
+                        Some(OutputTabInfo {
                             title: tab_info.title.clone(),
                             pid: pid.as_u32(),
                             rss: process.memory(),
@@ -53,7 +59,11 @@ fn serve_mini_tab_info(tab_infos: Arc<Mutex<HashMap<Pid, TabInfo>>>, addr: impl 
                 })
                 .filter_map(|mini_tab_info| mini_tab_info)
                 .collect();
-            let json = serde_json::to_string(&mini_tab_infos).unwrap();
+            let output_tab_data = OutputTabData {
+                last_update_timestamp: status.lock().unwrap().last_update_timestamp,
+                tab_infos: output_tab_infos,
+            };
+            let json = serde_json::to_string(&output_tab_data).unwrap();
             Response::new(Body::new(json))
         })
         .unwrap();

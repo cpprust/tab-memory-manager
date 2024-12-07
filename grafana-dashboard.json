@@ -95,25 +95,25 @@
           },
           "fields": [
             {
-              "jsonPath": "$[*].title"
+              "jsonPath": "$.tab_infos[*].title"
             },
             {
-              "jsonPath": "$[*].pid",
+              "jsonPath": "$.tab_infos[*].pid",
               "language": "jsonpath",
               "name": ""
             },
             {
-              "jsonPath": "$[*].rss",
+              "jsonPath": "$.tab_infos[*].rss",
               "language": "jsonpath",
               "name": ""
             },
             {
-              "jsonPath": "$[*].active",
+              "jsonPath": "$.tab_infos[*].active",
               "language": "jsonpath",
               "name": ""
             },
             {
-              "jsonPath": "$[*].cpu_usage",
+              "jsonPath": "$.tab_infos[*].cpu_usage",
               "language": "jsonpath",
               "name": ""
             }
@@ -202,7 +202,7 @@
           "cacheDurationSeconds": 300,
           "fields": [
             {
-              "jsonPath": "$[*].rss"
+              "jsonPath": "$.tab_infos[*].rss"
             }
           ],
           "method": "GET",
@@ -286,12 +286,12 @@
           "cacheDurationSeconds": 300,
           "fields": [
             {
-              "jsonPath": "$[*].title",
+              "jsonPath": "$.tab_infos[*].title",
               "language": "jsonpath",
               "name": ""
             },
             {
-              "jsonPath": "$[*].rss",
+              "jsonPath": "$.tab_infos[*].rss",
               "language": "jsonpath",
               "name": ""
             }
