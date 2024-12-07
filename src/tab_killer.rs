@@ -29,7 +29,6 @@ pub fn spawn_tab_killer_thread(
         // The duration loop sleep for
         let tick = Duration::from_secs_f32(config.check_interval_secs);
         let update_status_timeout = tick * 4;
-        let mut begin_idle_timestamps: HashMap<Pid, Timestamp> = HashMap::new();
         loop {
             let start_instant = Instant::now();
 
@@ -46,11 +45,7 @@ pub fn spawn_tab_killer_thread(
                 Ok(update_result) => match update_result {
                     Ok(_) => {
                         println!("Status update successed"); // debug!
-                        kill_tabs_by_strategies(
-                            status.clone(),
-                            &config,
-                            &mut begin_idle_timestamps,
-                        );
+                        kill_tabs_by_strategies(status.clone(), &config);
                     }
                     Err(e) => {
                         eprintln!("Cannot update status, skip this round: {e}");
@@ -81,20 +76,9 @@ pub fn spawn_tab_killer_thread(
     })
 }
 
-fn kill_tabs_by_strategies(
-    status: Arc<Mutex<Status>>,
-    config: &Config,
-    begin_idle_timestamps: &mut HashMap<Pid, Timestamp>,
-) {
-    // Clear stat if browser closed
+fn kill_tabs_by_strategies(status: Arc<Mutex<Status>>, config: &Config) {
     let system = System::new_all();
-    let browser_process_count = system
-        .processes_by_exact_name(BROWSER_NAME.as_ref())
-        .count();
-    if browser_process_count == 0 {
-        status.lock().unwrap().tab_infos.clear();
-    }
-
+    update_status(&status, &system);
     // Print stat
     println!("{:?}", status.lock().unwrap());
     let total_rss: u64 = status
@@ -121,7 +105,12 @@ fn kill_tabs_by_strategies(
                     kill_tabs_by_rss_limit(&status, &config, &system, total_rss);
                 }
                 KillTabStrategy::IdleTimeLimit => {
-                    kill_tabs_by_idle_time_limit(&status, &config, &system, begin_idle_timestamps);
+                    kill_tabs_by_idle_time_limit(
+                        &status.lock().unwrap().begin_idle_timestamps,
+                        &config,
+                        &system,
+                        status.lock().unwrap().timestamp,
+                    );
                 }
                 KillTabStrategy::MemoryChangeRate => {
                     eprintln!("Strategy memory_change_rate not implemented!");
@@ -184,18 +173,38 @@ fn kill_tabs_by_rss_limit(
 
 /// Will not kill new tab, because the last_access_time is wrong
 fn kill_tabs_by_idle_time_limit(
-    status: &Arc<Mutex<Status>>,
+    begin_idle_timestamps: &HashMap<Pid, Timestamp>,
     config: &Config,
     system: &System,
-    begin_idle_timestamps: &mut HashMap<Pid, Timestamp>,
+    data_timestamp: Timestamp,
 ) {
-    // Filter useless idle time
-    // begin_idle_timestamps.retain(|pid, _| status.lock().unwrap().contains_pid(pid));
+    let signal = Signal::Term;
+    begin_idle_timestamps
+        .iter()
+        .filter(|(_, &begin_idle_timestamp)| {
+            Duration::from_secs_f64((data_timestamp - begin_idle_timestamp) / 1000.0)
+                > Duration::from_secs_f64(config.strategy.idle_time_limit.max_secs)
+        })
+        .for_each(|(pid, _)| {
+            if let Some(process) = system.processes().get(pid) {
+                process.kill_with(signal);
+            }
+        });
+}
 
-    let data_timestamp = status.lock().unwrap().timestamp;
+fn update_status(status: &Arc<Mutex<Status>>, system: &System) {
+    let mut status = status.lock().unwrap();
+    // Clear stat if browser closed
+    let browser_process_count = system
+        .processes_by_exact_name(BROWSER_NAME.as_ref())
+        .count();
+    if browser_process_count == 0 {
+        status.tab_infos.clear();
+    }
+
+    // Update begin_idle_timestamps
+    let data_timestamp = status.timestamp;
     let mut last_access_timestamps: HashMap<Pid, Timestamp> = status
-        .lock()
-        .unwrap()
         .tab_infos
         .iter()
         .filter(|(_, tab_info)| tab_info.title != "New Tab")
@@ -211,31 +220,9 @@ fn kill_tabs_by_idle_time_limit(
     last_access_timestamps
         .iter_mut()
         .for_each(|(pid, last_accessd_time)| {
-            if let Some(&begin_idle_timestamp) = begin_idle_timestamps.get(pid) {
+            if let Some(&begin_idle_timestamp) = status.begin_idle_timestamps.get(pid) {
                 *last_accessd_time = last_accessd_time.max(begin_idle_timestamp);
             }
         });
-    *begin_idle_timestamps = last_access_timestamps;
-
-    let idle_too_long_processes =
-        begin_idle_timestamps
-            .iter()
-            .filter(|(_, &begin_idle_timestamp)| {
-                println!(
-                    "idle_time: {:?}, timestamp: {:?}, begin_idle_timestamp: {:?}",
-                    (data_timestamp - begin_idle_timestamp) / 1000.0,
-                    data_timestamp,
-                    begin_idle_timestamp
-                ); // debug!
-                Duration::from_secs_f64((data_timestamp - begin_idle_timestamp) / 1000.0)
-                    > Duration::from_secs_f64(config.strategy.idle_time_limit.max_secs)
-            });
-    println!("idle_too_long_processes: {:?}", idle_too_long_processes);
-
-    let signal = Signal::Term;
-    idle_too_long_processes.for_each(|(pid, _)| {
-        if let Some(process) = system.processes().get(pid) {
-            process.kill_with(signal);
-        }
-    });
+    status.begin_idle_timestamps = last_access_timestamps;
 }

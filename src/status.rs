@@ -2,13 +2,17 @@ use std::collections::HashMap;
 
 use sysinfo::{Pid, System};
 
-use crate::{tab_data_requester::TabInfo, tab_killer::Rss};
+use crate::{
+    tab_data_requester::{TabInfo, Timestamp},
+    tab_killer::Rss,
+};
 
 /// App status that must be sharing between threads
 #[derive(Debug, Default)]
 pub struct Status {
     pub timestamp: f64,
     pub tab_infos: HashMap<Pid, TabInfo>,
+    pub begin_idle_timestamps: HashMap<Pid, Timestamp>,
 }
 
 impl Status {

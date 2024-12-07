@@ -116,6 +116,11 @@
               "jsonPath": "$.tab_infos[*].cpu_usage",
               "language": "jsonpath",
               "name": ""
+            },
+            {
+              "jsonPath": "$.tab_infos[*].idle_time_secs",
+              "language": "jsonpath",
+              "name": ""
             }
           ],
           "method": "GET",
@@ -343,6 +348,6 @@
   "timezone": "browser",
   "title": "Tab Memory Usage",
   "uid": "be4zr924v2dj4d",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
