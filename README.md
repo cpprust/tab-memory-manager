@@ -72,10 +72,23 @@ View the memory usage of each tab, as shown in the example below.
 - Install grafana, grafana plugin and start
 
   ```
-  sudo pacman -Ss grafana
+  sudo pacman -S grafana --noconfirm
   sudo grafana cli plugins install marcusolsson-json-datasource
   sudo systemctl start grafana
   ```
+
+- Change "/etc/grafana.ini"
+
+Change (Remember to remove semicolon)
+
+```
+;min_refresh_interval = 5s
+```
+to
+
+```
+min_refresh_interval = 500ms
+```
 
 - Open grafana
 
