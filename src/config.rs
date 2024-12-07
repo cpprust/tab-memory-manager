@@ -6,7 +6,7 @@ use crate::PROJECT_NAME;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Config {
-    pub kill_tab_strategy: KillTabStrategy,
+    pub kill_tab_strategies: Vec<KillTabStrategy>,
     // The interval of applying strategy, in secs
     pub check_interval_secs: f32,
     // The detail configuration of strategies
@@ -18,22 +18,17 @@ pub struct Config {
 pub enum KillTabStrategy {
     /// Kill the tab if all tabs total resident set size (physical memory usage) hit limit
     RssLimit,
-    /// Kill the tab if change rate is too low (not being used)
-    MemoryChangeRate,
     /// Kill the tab if idle time is too long
     IdleTimeLimit,
+    /// Kill the tab if change rate is too low (not being used)
+    MemoryChangeRate,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Strategy {
-    pub memory_change_rate: MemoryChangeRate,
     pub rss_limit: RssLimit,
     pub idle_time_limit: IdleTimeLimit,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub struct MemoryChangeRate {
-    pub min_rate: f32,
+    pub memory_change_rate: MemoryChangeRate,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -44,6 +39,11 @@ pub struct RssLimit {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct IdleTimeLimit {
     pub max_secs: f32,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+pub struct MemoryChangeRate {
+    pub min_rate: f32,
 }
 
 pub fn create_or_new_config() -> Config {
