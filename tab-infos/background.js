@@ -1,10 +1,8 @@
+const serverUrl = 'ws://localhost:60000';
 let ws;
+let reconnectInterval = 100;
 
-function initWs() {
-  ws = new WebSocket("ws://127.0.0.1:60000");
-}
-
-async function getTabInfos() {
+async function getTabData() {
   let tabInfos = await chrome.tabs.query({});
   await Promise.all(tabInfos.map(async tabInfo => {
     tabInfo.browserInnerPid = await chrome.processes.getProcessIdForTab(tabInfo.id);
@@ -17,34 +15,38 @@ async function getTabInfos() {
   };
 }
 
-async function sendObjAsJson(obj) {
-  let json = JSON.stringify(obj, null, 0);
+function initWs() {
+  ws = new WebSocket(serverUrl);
 
-  if (ws && ws.readyState === WebSocket.OPEN) {
+  ws.addEventListener('open', async (_event) => {
+    console.error('Connected to the WebSocket server!');
+
+    let tabData = await getTabData();
+    let json = JSON.stringify(tabData);
     ws.send(json);
-  } else {
-    ws.close();
-    initWs();
-    console.error("WebSocket is not opened yet, cannot send json!");
-  }
+  });
+
+  ws.addEventListener('message', async (event) => {
+    console.error(`Message from server: ${event.data}`);
+
+    let tabData = await getTabData();
+    let json = JSON.stringify(tabData);
+    ws.send(json);
+  });
+
+  ws.addEventListener('error', (event) => {
+    console.error('WebSocket error:', event);
+  });
+
+  ws.addEventListener('close', (_event) => {
+    console.error('Disconnected from the WebSocket server!');
+
+    setTimeout(() => {
+      // console.error('Try to reconnect to WebSocket server...');
+      initWs();
+    }, reconnectInterval);
+  });
 }
 
 initWs();
 
-chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && tab.title) {
-    sendObjAsJson(await getTabInfos());
-  }
-});
-
-chrome.tabs.onActivated.addListener(async (_activeInfo) => {
-  sendObjAsJson(await getTabInfos());
-});
-
-chrome.tabs.onRemoved.addListener(async (_tabId, _removeInfo) => {
-  sendObjAsJson(await getTabInfos());
-});
-
-setInterval(async () => {
-  sendObjAsJson(await getTabInfos());
-}, 1000);

@@ -1,7 +1,10 @@
 use std::{
-    sync::{Arc, Mutex},
+    sync::{
+        mpsc::{Receiver, SyncSender},
+        Arc, Mutex,
+    },
     thread::{sleep, spawn, JoinHandle},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use sysinfo::{Pid, Signal, System};
@@ -12,14 +15,60 @@ use crate::{
     Status, BROWSER_NAME,
 };
 
-pub fn spawn_tab_killer_thread(status: Arc<Mutex<Status>>, config: Config) -> JoinHandle<()> {
+pub fn spawn_tab_killer_thread(
+    status: Arc<Mutex<Status>>,
+    config: Config,
+
+    update_req_sender: SyncSender<()>,
+    update_result_reciever: Receiver<Result<(), String>>,
+) -> JoinHandle<()> {
     spawn(move || {
         // The duration loop sleep for
         let tick = Duration::from_secs_f32(config.check_interval_secs);
+        let update_status_timeout = tick * 4;
         loop {
-            kill_tabs_by_strategy(status.clone(), &config);
+            let start_instant = Instant::now();
 
-            sleep(tick);
+            println!("Request update status"); // debug!
+            match update_req_sender.try_send(()) {
+                Ok(_) => (),
+                Err(_) => {
+                    eprintln!("Failed to request update status");
+                }
+            }
+
+            // Waiting for status update
+            match update_result_reciever.recv_timeout(update_status_timeout) {
+                Ok(update_result) => match update_result {
+                    Ok(_) => {
+                        println!("Status update successed"); // debug!
+                        kill_tabs_by_strategy(status.clone(), &config);
+                    }
+                    Err(e) => {
+                        eprintln!("Cannot update status, skip this round: {e}");
+                    }
+                },
+                Err(_) => {
+                    eprintln!("Timeout, retry requesting data!");
+                    continue;
+                }
+            }
+
+            let end_instant = Instant::now();
+            let consumed_time = end_instant - start_instant;
+            if tick < consumed_time {
+                eprintln!(
+                    "Consumed time {:?} exceed check interval {:?}, delay: {:?}",
+                    consumed_time,
+                    tick,
+                    consumed_time - tick
+                );
+                continue;
+            }
+
+            let sleep_duration = tick - consumed_time;
+            println!("Sleep for {:?}\n", sleep_duration); // debug!
+            sleep(sleep_duration);
         }
     })
 }
@@ -120,6 +169,4 @@ fn kill_tabs_by_strategy(status: Arc<Mutex<Status>>, config: &Config) {
             }
         }
     }
-
-    println!();
 }

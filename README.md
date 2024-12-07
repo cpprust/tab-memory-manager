@@ -61,30 +61,27 @@ min_rate = 0.5
 
 The project supports a Grafana visualization dashboard.
 
-After installing Grafana, load the grafana/template.json file to view the memory usage of each Chromium tab, as shown in the example below.
+View the memory usage of each tab, as shown in the example below.
 
 ![grafana-dashboard-preview](assets/grafana-dashboard-preview.webp)
 
-- Install grafana
+- Install grafana, grafana plugin and start
 
-```
-sudo pacman -Ss grafana
-```
+  ```
+  sudo pacman -Ss grafana
+  sudo grafana cli plugins install marcusolsson-json-datasource
+  sudo systemctl start grafana
+  ```
+
+- Open grafana
+
+  Browser open "http://localhost:3000"
 
 - Import dashboard
+
+  Import from "grafana-dashboard.json"
 
 - Add data source (json)
 
   Set url to "http://127.0.0.1:60001"
 
-- Install grafana plugin
-
-```
-sudo grafana cli plugins install marcusolsson-json-datasource
-```
-
-- Start grafana
-
-```
-sudo systemctl start grafana
-```
