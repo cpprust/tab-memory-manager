@@ -1,5 +1,5 @@
 mod config;
-mod mini_tab_infos_server;
+mod output_tab_data_server;
 mod tab_infos_listener;
 mod tab_killer;
 
@@ -9,7 +9,7 @@ use std::{
 };
 
 use config::create_or_new_config;
-use mini_tab_infos_server::spawn_output_tab_data_server;
+use output_tab_data_server::spawn_output_tab_data_server;
 use sysinfo::Pid;
 use tab_infos_listener::{spawn_tab_data_listener, TabInfo};
 use tab_killer::spawn_tab_killer_thread;
