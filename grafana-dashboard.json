@@ -18,13 +18,13 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 4,
+  "id": 1,
   "links": [],
   "panels": [
     {
       "datasource": {
         "type": "marcusolsson-json-datasource",
-        "uid": "ee62sdcrrfev4a"
+        "uid": "be67dxfwfspogb"
       },
       "fieldConfig": {
         "defaults": {
@@ -85,7 +85,7 @@
           }
         ]
       },
-      "pluginVersion": "11.3.0-pre",
+      "pluginVersion": "11.3.1",
       "targets": [
         {
           "cacheDurationSeconds": "0.1",
@@ -130,7 +130,7 @@
     {
       "datasource": {
         "type": "marcusolsson-json-datasource",
-        "uid": "ee62sdcrrfev4a"
+        "uid": "be67dxfwfspogb"
       },
       "fieldConfig": {
         "defaults": {
@@ -196,7 +196,7 @@
         "showThresholdMarkers": true,
         "sizing": "auto"
       },
-      "pluginVersion": "11.3.0-pre",
+      "pluginVersion": "11.3.1",
       "targets": [
         {
           "cacheDurationSeconds": 300,
@@ -217,7 +217,7 @@
     {
       "datasource": {
         "type": "marcusolsson-json-datasource",
-        "uid": "ee62sdcrrfev4a"
+        "uid": "be67dxfwfspogb"
       },
       "fieldConfig": {
         "defaults": {
@@ -279,7 +279,7 @@
         "sizing": "auto",
         "valueMode": "color"
       },
-      "pluginVersion": "11.3.0-pre",
+      "pluginVersion": "11.3.1",
       "targets": [
         {
           "body": "",
@@ -321,7 +321,7 @@
     }
   ],
   "preload": false,
-  "refresh": "1s",
+  "refresh": "500ms",
   "schemaVersion": 40,
   "tags": [],
   "templating": {
@@ -343,6 +343,6 @@
   "timezone": "browser",
   "title": "Tab Memory Usage",
   "uid": "be4zr924v2dj4d",
-  "version": 12,
+  "version": 2,
   "weekStart": ""
 }
