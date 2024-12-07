@@ -30,13 +30,13 @@ fn main() {
     // Sharing tab information between threads
     let status = Arc::new(Mutex::new(Status::default()));
 
-    // Waiting for json data and update tab_infos, bind on 127.0.0.1:8080
+    // Waiting for json data and update tab_infos, bind on ws://127.0.0.1:60000
     let tab_data_listener = spawn_tab_data_listener(Arc::clone(&status));
 
     // Terminate tab by given strategy
     let _tab_killer = spawn_tab_killer_thread(Arc::clone(&status), config.clone());
 
-    // Sharing vec of MiniTabInfo in json format, bind on 127.0.0.1:5000
+    // Sharing vec of MiniTabInfo in json format, bind on http://127.0.0.1:60001
     let _mini_tab_data_server = spawn_output_tab_data_server(Arc::clone(&status));
 
     tab_data_listener.join().unwrap();

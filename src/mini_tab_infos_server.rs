@@ -29,7 +29,7 @@ struct OutputTabInfo {
 
 pub fn spawn_output_tab_data_server(status: Arc<Mutex<Status>>) -> JoinHandle<()> {
     spawn(move || {
-        let addr = "127.0.0.1:5000";
+        let addr = "127.0.0.1:60001";
         serve_output_tab_data(status, addr);
     })
 }

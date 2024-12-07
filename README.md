@@ -18,7 +18,7 @@ By setting these parameters, users can decide how the program handles memory ass
 
 - Build and run "tab-memory-manager"
 
-  It listen on "127.0.0.1:5000" for tab information, which should be given by browser extension.
+  It listen on "ws://127.0.0.1:60000" for tab information, which should be connect by browser extension.
 
   ```shell
   cargo run -r
@@ -75,7 +75,7 @@ sudo pacman -Ss grafana
 
 - Add data source (json)
 
-  Set url to "127.0.0.1:5000"
+  Set url to "http://127.0.0.1:60001"
 
 - Install grafana plugin
 

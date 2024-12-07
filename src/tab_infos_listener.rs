@@ -56,7 +56,7 @@ pub fn spawn_tab_data_listener(status: Arc<Mutex<Status>>) -> JoinHandle<()> {
 }
 
 fn listen_for_tab_data(status: Arc<Mutex<Status>>) {
-    listen("127.0.0.1:8080", move |_| {
+    listen("127.0.0.1:60000", move |_| {
             let status = Arc::clone(&status);
             move |msg| {
                 if let Message::Text(msg) = msg {
