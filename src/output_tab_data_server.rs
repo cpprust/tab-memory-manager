@@ -25,7 +25,7 @@ struct OutputTabInfo {
     rss: u64,
     title: String,
     cpu_usage: f32,
-    idle_time_secs: f64,
+    background_time_secs: f64,
 }
 
 pub fn spawn_output_tab_data_server(status: Arc<Mutex<Status>>) -> JoinHandle<()> {
@@ -68,7 +68,7 @@ fn generate_output_tab_infos(
         .map(|(pid, tab_info)| {
             if let (Some(process), Some(begin_idle_timestamp)) = (
                 system.lock().unwrap().processes().get(pid),
-                status.begin_idle_timestamps.get(pid),
+                status.begin_background_timestamps.get(pid),
             ) {
                 Some(OutputTabInfo {
                     title: tab_info.title.clone(),
@@ -76,7 +76,7 @@ fn generate_output_tab_infos(
                     rss: process.memory(),
                     active: tab_info.active,
                     cpu_usage: process.cpu_usage(),
-                    idle_time_secs: if tab_info.active {
+                    background_time_secs: if tab_info.active {
                         0.0
                     } else {
                         (status.timestamp - begin_idle_timestamp) / 1000.0

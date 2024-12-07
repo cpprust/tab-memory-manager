@@ -106,7 +106,7 @@ fn kill_tabs_by_strategies(status: Arc<Mutex<Status>>, config: &Config) {
                 }
                 KillTabStrategy::IdleTimeLimit => {
                     kill_tabs_by_idle_time_limit(
-                        &status.lock().unwrap().begin_idle_timestamps,
+                        &status.lock().unwrap().begin_background_timestamps,
                         &config,
                         &system,
                         status.lock().unwrap().timestamp,
@@ -173,13 +173,13 @@ fn kill_tabs_by_rss_limit(
 
 /// Will not kill new tab, because the last_access_time is wrong
 fn kill_tabs_by_idle_time_limit(
-    begin_idle_timestamps: &HashMap<Pid, Timestamp>,
+    begin_background_timestamps: &HashMap<Pid, Timestamp>,
     config: &Config,
     system: &System,
     data_timestamp: Timestamp,
 ) {
     let signal = Signal::Term;
-    begin_idle_timestamps
+    begin_background_timestamps
         .iter()
         .filter(|(_, &begin_idle_timestamp)| {
             Duration::from_secs_f64((data_timestamp - begin_idle_timestamp) / 1000.0)
@@ -202,7 +202,7 @@ fn update_status(status: &Arc<Mutex<Status>>, system: &System) {
         status.tab_infos.clear();
     }
 
-    // Update begin_idle_timestamps
+    // Update begin_background_timestamps
     let data_timestamp = status.timestamp;
     let mut last_access_timestamps: HashMap<Pid, Timestamp> = status
         .tab_infos
@@ -220,9 +220,9 @@ fn update_status(status: &Arc<Mutex<Status>>, system: &System) {
     last_access_timestamps
         .iter_mut()
         .for_each(|(pid, last_accessd_time)| {
-            if let Some(&begin_idle_timestamp) = status.begin_idle_timestamps.get(pid) {
+            if let Some(&begin_idle_timestamp) = status.begin_background_timestamps.get(pid) {
                 *last_accessd_time = last_accessd_time.max(begin_idle_timestamp);
             }
         });
-    status.begin_idle_timestamps = last_access_timestamps;
+    status.begin_background_timestamps = last_access_timestamps;
 }

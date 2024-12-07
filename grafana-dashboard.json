@@ -118,7 +118,7 @@
               "name": ""
             },
             {
-              "jsonPath": "$.tab_infos[*].idle_time_secs",
+              "jsonPath": "$.tab_infos[*].background_time_secs",
               "language": "jsonpath",
               "name": ""
             }

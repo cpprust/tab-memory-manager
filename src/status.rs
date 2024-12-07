@@ -12,7 +12,7 @@ use crate::{
 pub struct Status {
     pub timestamp: f64,
     pub tab_infos: HashMap<Pid, TabInfo>,
-    pub begin_idle_timestamps: HashMap<Pid, Timestamp>,
+    pub begin_background_timestamps: HashMap<Pid, Timestamp>,
 }
 
 impl Status {
