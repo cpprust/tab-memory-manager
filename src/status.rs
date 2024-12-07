@@ -26,8 +26,4 @@ impl Status {
         sorted_pid_rss.sort_unstable_by_key(|&(_, rss)| rss);
         sorted_pid_rss
     }
-
-    pub fn contains_pid(&self, pid: &Pid) -> bool {
-        self.tab_infos.contains_key(pid)
-    }
 }

@@ -13,7 +13,7 @@ use crate::Status;
 /// The data is for sharing to frontend
 #[derive(Debug, Deserialize, Serialize)]
 struct OutputTabData {
-    last_update_timestamp: f64,
+    timestamp: f64,
     tab_infos: Vec<OutputTabInfo>,
 }
 
@@ -49,7 +49,7 @@ fn serve_output_tab_data(status: Arc<Mutex<Status>>, addr: impl ToSocketAddrs) {
 fn generate_output_tab_data(status: &Arc<Mutex<Status>>, system: &Mutex<System>) -> OutputTabData {
     let output_tab_infos = generate_output_tab_infos(status, system);
     OutputTabData {
-        last_update_timestamp: status.lock().unwrap().timestamp,
+        timestamp: status.lock().unwrap().timestamp,
         tab_infos: output_tab_infos,
     }
 }
