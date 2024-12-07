@@ -6,6 +6,10 @@ kill_tab_strategies = ["rss_limit"]
 # Range: 0.0 ~ inf
 check_interval_secs = 1.0
 
+# A list of regex, tab will not be kill if matche any
+# Example: whitelist: ["https://docs.rs"]
+whitelist = []
+
 # Kill the tab if all tabs total resident set size (physical memory usage) hit limit
 [strategy.rss_limit]
 # Range: 0 ~ 18_446_744_073_709_551_615

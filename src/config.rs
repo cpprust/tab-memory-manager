@@ -1,14 +1,18 @@
 use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
+use regex::Regex;
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::PROJECT_NAME;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Config {
     pub kill_tab_strategies: Vec<KillTabStrategy>,
     // The interval of applying strategy, in secs
     pub check_interval_secs: f32,
+    // A list of regex, they will not be killed if matched
+    #[serde(deserialize_with = "deserialize_regex")]
+    pub whitelist: Vec<Regex>,
     // The detail configuration of strategies
     pub strategy: Strategy,
 }
@@ -94,4 +98,16 @@ fn overwrite_config_to_default(overwridden_config_path: &PathBuf) -> Config {
         }
         Err(e) => panic!("The default config have incorrect format: {}", e),
     }
+}
+
+fn deserialize_regex<'de, D>(deserializer: D) -> Result<Vec<Regex>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let regex_strings: Vec<String> = Deserialize::deserialize(deserializer)?;
+
+    regex_strings
+        .into_iter()
+        .map(|s| Regex::new(&s).map_err(serde::de::Error::custom))
+        .collect()
 }

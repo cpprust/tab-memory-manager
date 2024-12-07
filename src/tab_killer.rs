@@ -18,7 +18,6 @@ use crate::{
 pub fn spawn_tab_killer_thread(
     status: Arc<Mutex<Status>>,
     config: Config,
-
     update_req_sender: SyncSender<()>,
     update_result_reciever: Receiver<Result<(), String>>,
 ) -> JoinHandle<()> {
@@ -137,24 +136,38 @@ fn kill_tabs_by_strategy(status: Arc<Mutex<Status>>, config: &Config) {
                         let mut killing_pids = Vec::new();
                         for &(pid, rss) in sorted_pid_rss.iter().rev() {
                             if exceed_rss >= expected_freed_rss {
+                                let url = status.lock().unwrap().tab_infos[&pid].url.clone();
+                                let in_whitelist =
+                                    config.whitelist.iter().any(|regex| regex.is_match(&url));
+                                if in_whitelist {
+                                    continue;
+                                }
+
                                 expected_freed_rss += rss;
                                 killing_pids.push(pid);
+                            } else {
+                                break;
                             }
                         }
 
                         killing_pids.iter().for_each(|pid| {
                             let signal = Signal::Term;
-                            match system.processes()[pid].kill_with(signal) {
-                                Some(success) => {
-                                    if !success {
-                                        eprintln!("Failed to send signal {} to {},", signal, pid);
+                            if let Some(process) = system.processes().get(pid) {
+                                match process.kill_with(signal) {
+                                    Some(success) => {
+                                        if !success {
+                                            eprintln!(
+                                                "Failed to send signal {} to {},",
+                                                signal, pid
+                                            );
+                                        }
                                     }
-                                }
-                                None => {
-                                    eprintln!(
-                                        "The signal {} is not supported on this platform!",
-                                        signal
-                                    );
+                                    None => {
+                                        eprintln!(
+                                            "The signal {} is not supported on this platform!",
+                                            signal
+                                        );
+                                    }
                                 }
                             }
                         })
