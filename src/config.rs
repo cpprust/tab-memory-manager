@@ -42,12 +42,12 @@ pub struct RssLimit {
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct IdleTimeLimit {
-    pub max_secs: f32,
+    pub max_secs: f64,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct MemoryChangeRate {
-    pub min_rate: f32,
+    pub min_rate: f64,
 }
 
 pub fn create_or_new_config() -> Config {

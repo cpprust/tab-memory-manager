@@ -1,28 +1,19 @@
 mod config;
 mod output_tab_data_server;
+mod status;
 mod tab_data_requester;
 mod tab_killer;
 
-use std::{
-    collections::HashMap,
-    sync::{mpsc::sync_channel, Arc, Mutex},
-};
+use std::sync::{mpsc::sync_channel, Arc, Mutex};
 
 use config::create_or_new_config;
 use output_tab_data_server::spawn_output_tab_data_server;
-use sysinfo::Pid;
-use tab_data_requester::{spawn_tab_data_requester, TabInfo};
+use status::Status;
+use tab_data_requester::spawn_tab_data_requester;
 use tab_killer::spawn_tab_killer_thread;
 
 const PROJECT_NAME: &str = "tab-memory-manager";
 const BROWSER_NAME: &str = "chromium";
-
-/// App status that must be sharing between threads
-#[derive(Debug, Default)]
-struct Status {
-    last_update_timestamp: f64,
-    tab_infos: HashMap<Pid, TabInfo>,
-}
 
 fn main() {
     let config = create_or_new_config();

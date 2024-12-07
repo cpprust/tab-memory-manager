@@ -11,14 +11,15 @@ use serde::{Deserialize, Serialize};
 use sysinfo::{Pid, System};
 use ws::{listen, Message};
 
-use crate::{Status, BROWSER_NAME};
+use crate::{status::Status, BROWSER_NAME};
 
 pub type BrowserInnerPid = u64;
+pub type Timestamp = f64;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InputTabData {
-    timestamp: f64,
+    timestamp: Timestamp,
     tab_infos: Vec<TabInfo>,
 }
 
@@ -36,7 +37,7 @@ pub struct TabInfo {
     pub id: u64,
     pub incognito: bool,
     pub index: u32,
-    pub last_accessed: f64,
+    pub last_accessed: Timestamp,
     pub muted_info: MutedInfo,
     pub pinned: bool,
     pub selected: bool,
@@ -168,7 +169,7 @@ fn request_tab_data_from_browser_and_update_status(
                             new_tab_infos.insert(pid, tab_info);
                         }
                         (*status.lock().unwrap()).tab_infos = new_tab_infos;
-                        (*status.lock().unwrap()).last_update_timestamp = input_tab_data.timestamp;
+                        (*status.lock().unwrap()).timestamp = input_tab_data.timestamp;
                         let _ = update_result_sender.try_send(Ok(()));
                     }
                     Err(e) => {

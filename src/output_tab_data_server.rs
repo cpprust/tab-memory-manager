@@ -49,7 +49,7 @@ fn serve_output_tab_data(status: Arc<Mutex<Status>>, addr: impl ToSocketAddrs) {
 fn generate_output_tab_data(status: &Arc<Mutex<Status>>, system: &Mutex<System>) -> OutputTabData {
     let output_tab_infos = generate_output_tab_infos(status, system);
     OutputTabData {
-        last_update_timestamp: status.lock().unwrap().last_update_timestamp,
+        last_update_timestamp: status.lock().unwrap().timestamp,
         tab_infos: output_tab_infos,
     }
 }

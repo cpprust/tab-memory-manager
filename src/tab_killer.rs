@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     sync::{
         mpsc::{Receiver, SyncSender},
         Arc, Mutex,
@@ -12,8 +13,11 @@ use thousands::Separable;
 
 use crate::{
     config::{Config, KillTabStrategy},
+    tab_data_requester::Timestamp,
     Status, BROWSER_NAME,
 };
+
+pub type Rss = u64;
 
 pub fn spawn_tab_killer_thread(
     status: Arc<Mutex<Status>>,
@@ -25,6 +29,7 @@ pub fn spawn_tab_killer_thread(
         // The duration loop sleep for
         let tick = Duration::from_secs_f32(config.check_interval_secs);
         let update_status_timeout = tick * 4;
+        let mut begin_idle_timestamps: HashMap<Pid, Timestamp> = HashMap::new();
         loop {
             let start_instant = Instant::now();
 
@@ -41,7 +46,11 @@ pub fn spawn_tab_killer_thread(
                 Ok(update_result) => match update_result {
                     Ok(_) => {
                         println!("Status update successed"); // debug!
-                        kill_tabs_by_strategy(status.clone(), &config);
+                        kill_tabs_by_strategies(
+                            status.clone(),
+                            &config,
+                            &mut begin_idle_timestamps,
+                        );
                     }
                     Err(e) => {
                         eprintln!("Cannot update status, skip this round: {e}");
@@ -72,7 +81,11 @@ pub fn spawn_tab_killer_thread(
     })
 }
 
-fn kill_tabs_by_strategy(status: Arc<Mutex<Status>>, config: &Config) {
+fn kill_tabs_by_strategies(
+    status: Arc<Mutex<Status>>,
+    config: &Config,
+    begin_idle_timestamps: &mut HashMap<Pid, Timestamp>,
+) {
     // Clear stat if browser closed
     let system = System::new_all();
     let browser_process_count = system
@@ -105,76 +118,10 @@ fn kill_tabs_by_strategy(status: Arc<Mutex<Status>>, config: &Config) {
             // Apply strategy
             match kill_tab_strategy {
                 KillTabStrategy::RssLimit => {
-                    if total_rss > config.strategy.rss_limit.max_bytes {
-                        println!(
-                            "Hit the rss limit({}/{}), apply RssLimit strategy",
-                            total_rss.separate_with_commas(),
-                            config.strategy.rss_limit.max_bytes.separate_with_commas()
-                        );
-
-                        type Rss = u64;
-                        // The background tab processes pid and rss, sorted by rss
-                        let mut sorted_pid_rss: Vec<(Pid, Rss)> = status
-                            .lock()
-                            .unwrap()
-                            .tab_infos
-                            .iter()
-                            .filter(|(_pid, tab_info)| !tab_info.active)
-                            .map(|(&pid, _tab_info)| {
-                                if let Some(process) = system.processes().get(&pid) {
-                                    (pid, process.memory())
-                                } else {
-                                    (pid, 0)
-                                }
-                            })
-                            .collect();
-                        sorted_pid_rss.sort_unstable_by_key(|&(_, rss)| rss);
-
-                        // Get pids to kill
-                        let exceed_rss = total_rss - config.strategy.rss_limit.max_bytes;
-                        let mut expected_freed_rss = 0;
-                        let mut killing_pids = Vec::new();
-                        for &(pid, rss) in sorted_pid_rss.iter().rev() {
-                            if exceed_rss >= expected_freed_rss {
-                                let url = status.lock().unwrap().tab_infos[&pid].url.clone();
-                                let in_whitelist =
-                                    config.whitelist.iter().any(|regex| regex.is_match(&url));
-                                if in_whitelist {
-                                    continue;
-                                }
-
-                                expected_freed_rss += rss;
-                                killing_pids.push(pid);
-                            } else {
-                                break;
-                            }
-                        }
-
-                        killing_pids.iter().for_each(|pid| {
-                            let signal = Signal::Term;
-                            if let Some(process) = system.processes().get(pid) {
-                                match process.kill_with(signal) {
-                                    Some(success) => {
-                                        if !success {
-                                            eprintln!(
-                                                "Failed to send signal {} to {},",
-                                                signal, pid
-                                            );
-                                        }
-                                    }
-                                    None => {
-                                        eprintln!(
-                                            "The signal {} is not supported on this platform!",
-                                            signal
-                                        );
-                                    }
-                                }
-                            }
-                        })
-                    }
+                    kill_tabs_by_rss_limit(&status, &config, &system, total_rss);
                 }
                 KillTabStrategy::IdleTimeLimit => {
-                    eprintln!("Strategy idle_time_limit not implemented!");
+                    kill_tabs_by_idle_time_limit(&status, &config, &system, begin_idle_timestamps);
                 }
                 KillTabStrategy::MemoryChangeRate => {
                     eprintln!("Strategy memory_change_rate not implemented!");
@@ -182,4 +129,113 @@ fn kill_tabs_by_strategy(status: Arc<Mutex<Status>>, config: &Config) {
             }
         }
     }
+}
+
+fn kill_tabs_by_rss_limit(
+    status: &Arc<Mutex<Status>>,
+    config: &Config,
+    system: &System,
+    total_rss: u64,
+) {
+    if total_rss > config.strategy.rss_limit.max_bytes {
+        println!(
+            "Hit the rss limit({}/{}), apply RssLimit strategy",
+            total_rss.separate_with_commas(),
+            config.strategy.rss_limit.max_bytes.separate_with_commas()
+        );
+
+        // Get pids to kill
+        let exceed_rss = total_rss - config.strategy.rss_limit.max_bytes;
+        let mut expected_freed_rss = 0;
+        let mut killing_pids = Vec::new();
+        let sorted_pid_rss = status.lock().unwrap().get_sorted_pid_rss(system);
+        for &(pid, rss) in sorted_pid_rss.iter().rev() {
+            if exceed_rss >= expected_freed_rss {
+                let url = status.lock().unwrap().tab_infos[&pid].url.clone();
+                let in_whitelist = config.whitelist.iter().any(|regex| regex.is_match(&url));
+                if in_whitelist {
+                    continue;
+                }
+
+                expected_freed_rss += rss;
+                killing_pids.push(pid);
+            } else {
+                break;
+            }
+        }
+
+        killing_pids.iter().for_each(|pid| {
+            let signal = Signal::Term;
+            if let Some(process) = system.processes().get(pid) {
+                match process.kill_with(signal) {
+                    Some(success) => {
+                        if !success {
+                            eprintln!("Failed to send signal {} to {},", signal, pid);
+                        }
+                    }
+                    None => {
+                        eprintln!("The signal {} is not supported on this platform!", signal);
+                    }
+                }
+            }
+        })
+    }
+}
+
+/// Will not kill new tab, because the last_access_time is wrong
+fn kill_tabs_by_idle_time_limit(
+    status: &Arc<Mutex<Status>>,
+    config: &Config,
+    system: &System,
+    begin_idle_timestamps: &mut HashMap<Pid, Timestamp>,
+) {
+    // Filter useless idle time
+    // begin_idle_timestamps.retain(|pid, _| status.lock().unwrap().contains_pid(pid));
+
+    let data_timestamp = status.lock().unwrap().timestamp;
+    let mut last_access_timestamps: HashMap<Pid, Timestamp> = status
+        .lock()
+        .unwrap()
+        .tab_infos
+        .iter()
+        .filter(|(_, tab_info)| tab_info.title != "New Tab")
+        .map(|(&pid, tab_info)| {
+            if tab_info.active {
+                (pid, data_timestamp)
+            } else {
+                (pid, tab_info.last_accessed)
+            }
+        })
+        .collect();
+    // Update idle time
+    last_access_timestamps
+        .iter_mut()
+        .for_each(|(pid, last_accessd_time)| {
+            if let Some(&begin_idle_timestamp) = begin_idle_timestamps.get(pid) {
+                *last_accessd_time = last_accessd_time.max(begin_idle_timestamp);
+            }
+        });
+    *begin_idle_timestamps = last_access_timestamps;
+
+    let idle_too_long_processes =
+        begin_idle_timestamps
+            .iter()
+            .filter(|(_, &begin_idle_timestamp)| {
+                println!(
+                    "idle_time: {:?}, timestamp: {:?}, begin_idle_timestamp: {:?}",
+                    (data_timestamp - begin_idle_timestamp) / 1000.0,
+                    data_timestamp,
+                    begin_idle_timestamp
+                ); // debug!
+                Duration::from_secs_f64((data_timestamp - begin_idle_timestamp) / 1000.0)
+                    > Duration::from_secs_f64(config.strategy.idle_time_limit.max_secs)
+            });
+    println!("idle_too_long_processes: {:?}", idle_too_long_processes);
+
+    let signal = Signal::Term;
+    idle_too_long_processes.for_each(|(pid, _)| {
+        if let Some(process) = system.processes().get(pid) {
+            process.kill_with(signal);
+        }
+    });
 }
