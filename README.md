@@ -53,7 +53,7 @@ max_bytes = 2_000_000_000
 # Range: 0.0 ~ inf
 max_secs = 86400.0
 
-# Kill the tab if memory change rate is too low (meas it's may not being used)
+# Kill the tab if memory change rate is too low (means it's may not being used)
 # 🚧 Not implemented
 [strategy.memory_change_rate]
 # Range: 0.0 ~ 1.0
