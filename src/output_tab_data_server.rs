@@ -66,7 +66,7 @@ fn generate_output_tab_infos(
         .tab_infos
         .iter()
         .map(|(pid, tab_info)| {
-            if let (Some(process), Some(begin_idle_timestamp)) = (
+            if let (Some(process), Some(begin_background_timestamp)) = (
                 system.lock().unwrap().processes().get(pid),
                 status.begin_background_timestamps.get(pid),
             ) {
@@ -79,7 +79,7 @@ fn generate_output_tab_infos(
                     background_time_secs: if tab_info.active {
                         0.0
                     } else {
-                        (status.timestamp - begin_idle_timestamp) / 1000.0
+                        (status.timestamp - begin_background_timestamp) / 1000.0
                     },
                 })
             } else {

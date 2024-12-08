@@ -2,7 +2,7 @@
 
 A memory management strategy more aggressive than Chromium's native memory management mechanism.
 
-Users can configure related options in "~/.config/tab-memory-manager.toml" such as Chromium's maximum memory usage, the idle time threshold for removing tabs, and the memory management strategy to use.
+Users can configure related options in "~/.config/tab-memory-manager.toml".
 
 By setting these parameters, users can decide how the program handles memory associated with tabs.
 
@@ -32,7 +32,7 @@ If it is gone or corrupted, it will be overwrite with default config.
 
 ```toml
 # Kill the most memory consuming tab in the background with the given strategy
-# Options: rss_limit, idle_time_limit, memory_change_rate
+# Options: rss_limit, background_time_limit, cpu_idle_time
 kill_tab_strategies = ["rss_limit"]
 
 # Check interval of choosen strategy
@@ -43,21 +43,21 @@ check_interval_secs = 1.0
 # Example: whitelist: ["https://docs.rs"]
 whitelist = []
 
-# Kill the tab if all tabs total resident set size (physical memory usage) hit limit
+# Kill the tab if all tabs total resident set size (physical memory usage) hit limit, kill in descending order
 [strategy.rss_limit]
 # Range: 0 ~ 18_446_744_073_709_551_615
 max_bytes = 2_000_000_000
 
-# Kill the tab if idle time is too long, this will not kill "New Tab"
-[strategy.idle_time_limit]
+# Kill the tab if it is in background for too long, this will not kill "New Tab"
+[strategy.background_time_limit]
 # Range: 0.0 ~ inf
 max_secs = 86400.0
 
-# Kill the tab if memory change rate is too low (means it's may not being used)
+# Kill the tab if it have not use cpu for too long
 # 🚧 Not implemented
-[strategy.memory_change_rate]
-# Range: 0.0 ~ 1.0
-min_rate = 0.5
+[strategy.cpu_idle_time]
+# Range: 0.0 ~ inf
+max_secs = 86400.0
 ```
 
 ## Grafana dashboard (optional)

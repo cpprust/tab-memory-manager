@@ -20,19 +20,19 @@ pub struct Config {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum KillTabStrategy {
-    /// Kill the tab if all tabs total resident set size (physical memory usage) hit limit
+    /// Kill the tab if all tabs total resident set size (physical memory usage) hit limit, kill in descending order
     RssLimit,
-    /// Kill the tab if idle time is too long
-    IdleTimeLimit,
-    /// Kill the tab if change rate is too low (not being used)
-    MemoryChangeRate,
+    /// Kill the tab if it is in background for too long, this will not kill "New Tab"
+    BackgroundTimeLimit,
+    /// Kill the tab if it have not use cpu for too long
+    CpuIdleTime,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Strategy {
     pub rss_limit: RssLimit,
-    pub idle_time_limit: IdleTimeLimit,
-    pub memory_change_rate: MemoryChangeRate,
+    pub background_time_limit: BackgroundTimeLimit,
+    pub cpu_idle_time: CpuIdleTime,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -41,13 +41,13 @@ pub struct RssLimit {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub struct IdleTimeLimit {
+pub struct BackgroundTimeLimit {
     pub max_secs: f64,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub struct MemoryChangeRate {
-    pub min_rate: f64,
+pub struct CpuIdleTime {
+    pub max_secs: f64,
 }
 
 pub fn create_or_new_config() -> Config {

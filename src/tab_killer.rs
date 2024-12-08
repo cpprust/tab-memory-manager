@@ -104,16 +104,16 @@ fn kill_tabs_by_strategies(status: Arc<Mutex<Status>>, config: &Config) {
                 KillTabStrategy::RssLimit => {
                     kill_tabs_by_rss_limit(&status, &config, &system, total_rss);
                 }
-                KillTabStrategy::IdleTimeLimit => {
-                    kill_tabs_by_idle_time_limit(
+                KillTabStrategy::BackgroundTimeLimit => {
+                    kill_tabs_by_background_time_limit(
                         &status.lock().unwrap().begin_background_timestamps,
                         &config,
                         &system,
                         status.lock().unwrap().timestamp,
                     );
                 }
-                KillTabStrategy::MemoryChangeRate => {
-                    eprintln!("Strategy memory_change_rate not implemented!");
+                KillTabStrategy::CpuIdleTime => {
+                    eprintln!("Strategy cpu_idle_time not implemented!");
                 }
             }
         }
@@ -172,7 +172,7 @@ fn kill_tabs_by_rss_limit(
 }
 
 /// Will not kill new tab, because the last_access_time is wrong
-fn kill_tabs_by_idle_time_limit(
+fn kill_tabs_by_background_time_limit(
     begin_background_timestamps: &HashMap<Pid, Timestamp>,
     config: &Config,
     system: &System,
@@ -181,9 +181,9 @@ fn kill_tabs_by_idle_time_limit(
     let signal = Signal::Term;
     begin_background_timestamps
         .iter()
-        .filter(|(_, &begin_idle_timestamp)| {
-            Duration::from_secs_f64((data_timestamp - begin_idle_timestamp) / 1000.0)
-                > Duration::from_secs_f64(config.strategy.idle_time_limit.max_secs)
+        .filter(|(_, &begin_background_timestamp)| {
+            Duration::from_secs_f64((data_timestamp - begin_background_timestamp) / 1000.0)
+                > Duration::from_secs_f64(config.strategy.background_time_limit.max_secs)
         })
         .for_each(|(pid, _)| {
             if let Some(process) = system.processes().get(pid) {
@@ -216,12 +216,11 @@ fn update_status(status: &Arc<Mutex<Status>>, system: &System) {
             }
         })
         .collect();
-    // Update idle time
     last_access_timestamps
         .iter_mut()
         .for_each(|(pid, last_accessd_time)| {
-            if let Some(&begin_idle_timestamp) = status.begin_background_timestamps.get(pid) {
-                *last_accessd_time = last_accessd_time.max(begin_idle_timestamp);
+            if let Some(&begin_background_timestamp) = status.begin_background_timestamps.get(pid) {
+                *last_accessd_time = last_accessd_time.max(begin_background_timestamp);
             }
         });
     status.begin_background_timestamps = last_access_timestamps;
