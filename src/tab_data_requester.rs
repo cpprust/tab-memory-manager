@@ -9,7 +9,7 @@ use std::{
 
 use debug_print::debug_println;
 use serde::{Deserialize, Serialize};
-use sysinfo::{Pid, ProcessesToUpdate};
+use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate};
 use ws::{listen, Message};
 
 use crate::{status::Status, BROWSER_NAME};
@@ -95,8 +95,11 @@ fn request_tab_data_from_browser_and_update_status(
                 match serde_json::from_str::<TabData>(&msg) {
                     Ok(input_tab_data) => {
                         let status = &mut status.lock().unwrap();
-                        status.system.refresh_all();
-                        status.system.refresh_processes(ProcessesToUpdate::All, true);
+                        // status.system.refresh_all();
+                        status.system.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::everything());
+                        // status.system.refresh_processes(ProcessesToUpdate::All, true);
+                        status.system.refresh_memory();
+                        status.system.refresh_cpu_all();
 
                         // If given tab infos inner pid are the same as last time, use the old pid map
                         let last_loop_browser_inner_pids: HashSet<BrowserInnerPid> = status.tab_infos.values().map(|tab_info| tab_info.browser_inner_pid).collect();
@@ -111,7 +114,7 @@ fn request_tab_data_from_browser_and_update_status(
                                 let cmdline = match process.cmd().first() {
                                     Some(cmdline) => cmdline,
                                     None => {
-                                        eprintln!("Process {} cmdline of is empty!", process.pid());
+                                        eprintln!("Process {} cmdline is empty!", process.pid());
                                         continue;
                                     }
                                 };
