@@ -19,7 +19,7 @@ function initWs() {
   ws = new WebSocket(serverUrl);
 
   ws.addEventListener('open', async (_event) => {
-    console.error('Connected to the WebSocket server!');
+    console.log('Connected to the WebSocket server!');
 
     let tabData = await getTabData();
     let json = JSON.stringify(tabData);
@@ -27,7 +27,7 @@ function initWs() {
   });
 
   ws.addEventListener('message', async (event) => {
-    console.error(`Message from server: ${event.data}`);
+    console.log(`Message from server: ${event.data}`);
 
     let tabData = await getTabData();
     let json = JSON.stringify(tabData);
@@ -39,7 +39,7 @@ function initWs() {
   });
 
   ws.addEventListener('close', (_event) => {
-    console.error('Disconnected from the WebSocket server!');
+    console.log('Disconnected from the WebSocket server!');
 
     setTimeout(() => {
       // console.error('Try to reconnect to WebSocket server...');
