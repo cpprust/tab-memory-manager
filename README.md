@@ -112,3 +112,22 @@ View the memory usage of each tab, as shown in the example below.
 
   Set url to "http://127.0.0.1:60001"
 
+## Debug
+
+- Get tab data from browser extension (need `websocat`)
+
+  ```
+  websocat -s 60000
+  ```
+
+  The browser will try to connect to "ws://127.0.0.1:60000", so you must host a server to let browser connect to. 
+
+  After connected, press enter will request for tab data. 
+
+- Get tab data from tab memory manager
+
+  ```
+  curl http://127.0.0.1:60001
+  ```
+
+  This is the data grafana dashboard ask for.
