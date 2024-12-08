@@ -7,6 +7,7 @@ use std::{
     thread::{spawn, JoinHandle},
 };
 
+use debug_print::debug_println;
 use serde::{Deserialize, Serialize};
 use sysinfo::Pid;
 use ws::{listen, Message};
@@ -76,20 +77,20 @@ fn request_tab_data_from_browser_and_update_status(
 ) {
     let update_req_reciever = Arc::new(Mutex::new(update_req_reciever));
     listen("127.0.0.1:60000", move |ws_msg_sender| {
-        println!("New sender: {:?}", ws_msg_sender); // debug!
+        debug_println!("New sender: {:?}", ws_msg_sender);
         let update_req_reciever = update_req_reciever.clone();
         spawn(move || {
             while let Ok(_) = update_req_reciever.lock().unwrap().recv() {
-                println!("Requesting tab data from browser extension"); // debug!
+                debug_println!("Requesting tab data from browser extension");
                 // Send arbitrary data to tell extension to send json back
                 ws_msg_sender.broadcast(Message::binary(b"")).unwrap();
-                println!("Finish requesting tab data from browser extension"); // debug!
+                debug_println!("Finish requesting tab data from browser extension");
             }
         });
         let status = Arc::clone(&status);
         let update_result_sender = update_result_sender.clone();
         move |ws_msg| {
-            println!("Recieved a ws_msg!");
+            debug_println!("Recieved a ws_msg!");
             if let Message::Text(msg) = ws_msg {
                 match serde_json::from_str::<InputTabData>(&msg) {
                     Ok(input_tab_data) => {

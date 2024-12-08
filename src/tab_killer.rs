@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     sync::{
         mpsc::{Receiver, SyncSender},
         Arc, Mutex,
@@ -7,6 +8,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use debug_print::debug_println;
 use sysinfo::Signal;
 use thousands::Separable;
 
@@ -30,7 +32,7 @@ pub fn spawn_tab_killer_thread(
         loop {
             let start_instant = Instant::now();
 
-            println!("Request update status"); // debug!
+            debug_println!("Request update status");
             match update_req_sender.try_send(()) {
                 Ok(_) => (),
                 Err(_) => {
@@ -42,7 +44,7 @@ pub fn spawn_tab_killer_thread(
             match update_result_reciever.recv_timeout(update_status_timeout) {
                 Ok(update_result) => match update_result {
                     Ok(_) => {
-                        println!("Status update successed"); // debug!
+                        debug_println!("Status update successed");
                         kill_tabs_by_strategies(status.clone(), &config);
                     }
                     Err(e) => {
@@ -68,7 +70,7 @@ pub fn spawn_tab_killer_thread(
             }
 
             let sleep_duration = tick - consumed_time;
-            println!("Sleep for {:?}\n", sleep_duration); // debug!
+            println!("Tick consumed {:?}/{:?}\n", consumed_time, tick);
             sleep(sleep_duration);
         }
     })
@@ -76,8 +78,17 @@ pub fn spawn_tab_killer_thread(
 
 fn kill_tabs_by_strategies(status: Arc<Mutex<Status>>, config: &Config) {
     let status = &mut status.lock().unwrap();
-    // Print stat
-    println!("{:?}", status);
+
+    debug_println!("{:?}", status);
+    println!(
+        "Tabs: {:?}",
+        status
+            .tab_infos
+            .iter()
+            .map(|(pid, tab_info)| (pid, tab_info.title.clone()))
+            .collect::<BTreeMap<_, _>>()
+    );
+
     let total_rss: u64 = status
         .tab_infos
         .keys()
@@ -89,7 +100,7 @@ fn kill_tabs_by_strategies(status: Arc<Mutex<Status>>, config: &Config) {
             }
         })
         .sum();
-    println!("total_rss: {}", total_rss.separate_with_commas());
+    println!("Total rss: {}", total_rss.separate_with_commas());
 
     // Apply kill tab startegies
     if status.tab_infos.len() > 0 {
