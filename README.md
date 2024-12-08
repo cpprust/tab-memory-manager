@@ -32,7 +32,7 @@ If it is gone or corrupted, it will be overwrite with default config.
 
 ```toml
 # Kill the most memory consuming tab in the background with the given strategy
-# Options: rss_limit, background_time_limit, cpu_idle_time
+# Options: rss_limit, background_time_limit, cpu_idle_time_limit
 kill_tab_strategies = ["rss_limit"]
 
 # Check interval of choosen strategy
@@ -51,13 +51,12 @@ max_bytes = 2_000_000_000
 # Kill the tab if it is in background for too long, this will not kill "New Tab"
 [strategy.background_time_limit]
 # Range: 0.0 ~ inf
-max_secs = 86400.0
+max_secs = 3600.0
 
 # Kill the tab if it have not use cpu for too long
-# 🚧 Not implemented
 [strategy.cpu_idle_time_limit]
 # Range: 0.0 ~ inf
-max_secs = 86400.0
+max_secs = 3600.0
 ```
 
 ## Grafana dashboard (optional)
