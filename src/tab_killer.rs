@@ -211,7 +211,7 @@ fn kill_tabs_by_cpu_idle_time_limit(status: &mut Status, config: &Config) {
         // Only left those tabs which cpu idle too long
         .filter(|(_, &begin_cpu_idle_timestamp)| {
             Duration::from_secs_f64((status.timestamp - begin_cpu_idle_timestamp) / 1000.0)
-                > Duration::from_secs_f64(config.strategy.background_time_limit.max_secs)
+                > Duration::from_secs_f64(config.strategy.cpu_idle_time_limit.max_secs)
         })
         // Don't kill new tab
         // .filter(|(pid, _)| {
