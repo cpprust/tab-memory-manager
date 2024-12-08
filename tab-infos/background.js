@@ -50,3 +50,16 @@ function initWs() {
 
 initWs();
 
+// Function to keep the service worker alive
+// https://stackoverflow.com/a/66618269
+const keepAlive = () => {
+    // Call an asynchronous chrome api every 20 seconds
+    setInterval(() => {
+        chrome.runtime.getPlatformInfo();
+    }, 20000);
+};
+
+chrome.runtime.onStartup.addListener(keepAlive);
+chrome.runtime.onInstalled.addListener(keepAlive);
+keepAlive();
+
