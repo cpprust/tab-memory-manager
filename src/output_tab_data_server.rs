@@ -18,13 +18,13 @@ struct OutputTabData {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct OutputTabInfo {
-    active: bool,
-    pid: u32,
-    // Resident set size
-    rss: u64,
     title: String,
-    cpu_usage: f32,
+    pid: u32,
+    rss: u64,
+    foreground: bool,
     background_time_secs: f64,
+    cpu_usage: f32,
+    cpu_idle_time_secs: f64,
 }
 
 pub fn spawn_output_tab_data_server(status: Arc<Mutex<Status>>) -> JoinHandle<()> {
@@ -61,21 +61,27 @@ fn generate_output_tab_infos(status: &Arc<Mutex<Status>>) -> Vec<OutputTabInfo> 
         .tab_infos
         .iter()
         .map(|(pid, tab_info)| {
-            if let (Some(process), Some(begin_background_timestamp)) = (
+            if let (
+                Some(process),
+                Some(begin_background_timestamp),
+                Some(begin_cpu_idle_timestamp),
+            ) = (
                 status.system.processes().get(pid),
                 status.begin_background_timestamps.get(pid),
+                status.begin_cpu_idle_timestamps.get(pid),
             ) {
                 Some(OutputTabInfo {
                     title: tab_info.title.clone(),
                     pid: pid.as_u32(),
                     rss: process.memory(),
-                    active: tab_info.active,
+                    foreground: tab_info.active,
                     cpu_usage: process.cpu_usage(),
                     background_time_secs: if tab_info.active {
                         0.0
                     } else {
                         (status.timestamp - begin_background_timestamp) / 1000.0
                     },
+                    cpu_idle_time_secs: (status.timestamp - begin_cpu_idle_timestamp) / 1000.0,
                 })
             } else {
                 None

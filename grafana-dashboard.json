@@ -108,7 +108,12 @@
               "name": ""
             },
             {
-              "jsonPath": "$.tab_infos[*].active",
+              "jsonPath": "$.tab_infos[*].foreground",
+              "language": "jsonpath",
+              "name": ""
+            },
+            {
+              "jsonPath": "$.tab_infos[*].background_time_secs",
               "language": "jsonpath",
               "name": ""
             },
@@ -118,7 +123,7 @@
               "name": ""
             },
             {
-              "jsonPath": "$.tab_infos[*].background_time_secs",
+              "jsonPath": "$.tab_infos[*].cpu_idle_time_secs",
               "language": "jsonpath",
               "name": ""
             }
@@ -326,7 +331,7 @@
     }
   ],
   "preload": false,
-  "refresh": "500ms",
+  "refresh": "1s",
   "schemaVersion": 40,
   "tags": [],
   "templating": {
@@ -348,6 +353,6 @@
   "timezone": "browser",
   "title": "Tab Memory Usage",
   "uid": "be4zr924v2dj4d",
-  "version": 3,
+  "version": 5,
   "weekStart": ""
 }

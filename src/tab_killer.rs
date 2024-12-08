@@ -188,9 +188,12 @@ fn kill_tabs_by_cpu_idle_time_limit(status: &mut Status, config: &Config) {
                 > Duration::from_secs_f64(config.strategy.background_time_limit.max_secs)
         })
         .for_each(|(pid, _)| {
-            //
             if let Some(process) = status.system.processes().get(pid) {
-                process.kill_with(signal);
+                if let Some(tab_info) = status.tab_infos.get(pid) {
+                    if !tab_info.active {
+                        process.kill_with(signal);
+                    }
+                }
             }
         });
 }
@@ -229,5 +232,23 @@ fn update_status(status: &mut Status) {
     status.begin_background_timestamps = last_access_timestamps;
 
     // Update begin_cpu_idle_timestamps
-    let data_timestamp = status.timestamp;
+    let new_begin_cpu_idle_timestamps: HashMap<Pid, Timestamp> = status
+        .tab_infos
+        .keys()
+        .filter_map(|&pid| match status.begin_cpu_idle_timestamps.get(&pid) {
+            Some(&old_begin_cpu_idle_timestamp) => {
+                if let Some(process) = status.system.processes().get(&pid) {
+                    if process.cpu_usage() == 0.0 {
+                        Some((pid, old_begin_cpu_idle_timestamp))
+                    } else {
+                        Some((pid, status.timestamp))
+                    }
+                } else {
+                    None
+                }
+            }
+            None => Some((pid, status.timestamp)),
+        })
+        .collect();
+    status.begin_cpu_idle_timestamps = new_begin_cpu_idle_timestamps;
 }
