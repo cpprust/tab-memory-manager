@@ -184,7 +184,9 @@ fn request_tab_data_from_browser_and_update_status(
                     }
                     Err(e) => {
                         eprintln!("Failed to parse json: {e}\nError data: {msg}");
-                        update_result_sender.try_send(Err(format!("Failed to parse json: {e}\nError data: {msg}"))).expect("Failed to send status update result!");
+                        if let Err(e) = update_result_sender.try_send(Err(format!("Failed to parse json: {e}\nError data: {msg}"))) {
+                            eprintln!("Failed to send status update result: {}", e);
+                        }
                     }
                 }
             } else {
