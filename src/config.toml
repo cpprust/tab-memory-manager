@@ -6,7 +6,10 @@ kill_tab_strategies = ["rss_limit"]
 # Range: 0.0 ~ inf
 check_interval_secs = 1.0
 
-# A list of regex, tab will not be kill if matche any
+# Don't discard if the tab produce sound recently
+whitelist_audible = true
+
+# A list of regex, tab will not be kill if match any
 # Example: whitelist: ["https://docs.rs"]
 whitelist = []
 

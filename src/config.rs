@@ -10,6 +10,8 @@ pub struct Config {
     pub kill_tab_strategies: Vec<KillTabStrategy>,
     // The interval of applying strategy, in secs
     pub check_interval_secs: f32,
+    // Don't discard if the tab produce sound recently
+    pub whitelist_audible: bool,
     // A list of regex, they will not be killed if matched
     #[serde(deserialize_with = "deserialize_regex")]
     pub whitelist: Vec<Regex>,

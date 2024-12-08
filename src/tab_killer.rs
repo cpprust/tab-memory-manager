@@ -129,12 +129,35 @@ fn kill_tabs_by_rss_limit(status: &Status, config: &Config, total_rss: u64) {
             config.strategy.rss_limit.max_bytes.separate_with_commas()
         );
 
+        let sorted_pid_rss = status.get_sorted_pid_rss();
+        let killable_pid_rss = sorted_pid_rss
+            .iter()
+            // Don't kill new tab
+            // .filter(|pid| {
+            //     if let Some(tab_info) = status.tab_infos.get(pid) {
+            //         tab_info.title != "New Tab"
+            //     } else {
+            //         false
+            //     }
+            // })
+            // Don't kill audible tab
+            .filter(|(pid, _)| {
+                if config.whitelist_audible {
+                    if let Some(tab_info) = status.tab_infos.get(pid) {
+                        !tab_info.audible
+                    } else {
+                        true
+                    }
+                } else {
+                    true
+                }
+            });
+
         // Get pids to kill
         let exceed_rss = total_rss - config.strategy.rss_limit.max_bytes;
         let mut expected_freed_rss = 0;
         let mut killing_pids = Vec::new();
-        let sorted_pid_rss = status.get_sorted_pid_rss();
-        for &(pid, rss) in sorted_pid_rss.iter().rev() {
+        for &(pid, rss) in killable_pid_rss.rev() {
             if exceed_rss >= expected_freed_rss {
                 let url = status.tab_infos[&pid].url.clone();
                 let in_whitelist = config.whitelist.iter().any(|regex| regex.is_match(&url));
@@ -149,31 +172,22 @@ fn kill_tabs_by_rss_limit(status: &Status, config: &Config, total_rss: u64) {
             }
         }
 
-        killing_pids
-            .iter()
-            // Don't kill new tab
-            // .filter(|pid| {
-            //     if let Some(tab_info) = status.tab_infos.get(pid) {
-            //         tab_info.title != "New Tab"
-            //     } else {
-            //         false
-            //     }
-            // })
-            .for_each(|pid| {
-                let signal = Signal::Term;
-                if let Some(process) = status.system.processes().get(pid) {
-                    match process.kill_with(signal) {
-                        Some(success) => {
-                            if !success {
-                                eprintln!("Failed to send signal {} to {},", signal, pid);
-                            }
-                        }
-                        None => {
-                            eprintln!("The signal {} is not supported on this platform!", signal);
+        // Kill
+        killing_pids.iter().for_each(|pid| {
+            let signal = Signal::Term;
+            if let Some(process) = status.system.processes().get(pid) {
+                match process.kill_with(signal) {
+                    Some(success) => {
+                        if !success {
+                            eprintln!("Failed to send signal {} to {},", signal, pid);
                         }
                     }
+                    None => {
+                        eprintln!("The signal {} is not supported on this platform!", signal);
+                    }
                 }
-            })
+            }
+        })
     }
 }
 
@@ -188,15 +202,29 @@ fn kill_tabs_by_background_time_limit(status: &mut Status, config: &Config) {
             Duration::from_secs_f64((status.timestamp - begin_background_timestamp) / 1000.0)
                 > Duration::from_secs_f64(config.strategy.background_time_limit.max_secs)
         })
+        .map(|(pid, _)| pid)
         // Don't kill new tab
-        .filter(|(pid, _)| {
+        .filter(|pid| {
             if let Some(tab_info) = status.tab_infos.get(pid) {
                 tab_info.title != "New Tab"
             } else {
                 false
             }
         })
-        .for_each(|(pid, _)| {
+        // Don't kill audible tab
+        .filter(|pid| {
+            if config.whitelist_audible {
+                if let Some(tab_info) = status.tab_infos.get(pid) {
+                    !tab_info.audible
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        })
+        // Kill
+        .for_each(|pid| {
             if let Some(process) = status.system.processes().get(pid) {
                 process.kill_with(signal);
             }
@@ -213,15 +241,29 @@ fn kill_tabs_by_cpu_idle_time_limit(status: &mut Status, config: &Config) {
             Duration::from_secs_f64((status.timestamp - begin_cpu_idle_timestamp) / 1000.0)
                 > Duration::from_secs_f64(config.strategy.cpu_idle_time_limit.max_secs)
         })
+        .map(|(pid, _)| pid)
         // Don't kill new tab
-        // .filter(|(pid, _)| {
+        // .filter(|pid| {
         //     if let Some(tab_info) = status.tab_infos.get(pid) {
         //         tab_info.title != "New Tab"
         //     } else {
         //         false
         //     }
         // })
-        .for_each(|(pid, _)| {
+        // Don't kill audible tab
+        .filter(|pid| {
+            if config.whitelist_audible {
+                if let Some(tab_info) = status.tab_infos.get(pid) {
+                    !tab_info.audible
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        })
+        // Kill
+        .for_each(|pid| {
             if let Some(process) = status.system.processes().get(pid) {
                 if let Some(tab_info) = status.tab_infos.get(pid) {
                     if !tab_info.active {

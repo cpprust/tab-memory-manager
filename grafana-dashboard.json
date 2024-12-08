@@ -60,7 +60,7 @@
       },
       "gridPos": {
         "h": 11,
-        "w": 14,
+        "w": 16,
         "x": 0,
         "y": 0
       },
@@ -104,6 +104,11 @@
             },
             {
               "jsonPath": "$.tab_infos[*].rss",
+              "language": "jsonpath",
+              "name": ""
+            },
+            {
+              "jsonPath": "$.tab_infos[*].audible",
               "language": "jsonpath",
               "name": ""
             },
@@ -185,8 +190,8 @@
       },
       "gridPos": {
         "h": 11,
-        "w": 10,
-        "x": 14,
+        "w": 8,
+        "x": 16,
         "y": 0
       },
       "id": 2,
@@ -353,6 +358,6 @@
   "timezone": "browser",
   "title": "Tab Memory Usage",
   "uid": "be4zr924v2dj4d",
-  "version": 5,
+  "version": 7,
   "weekStart": ""
 }
