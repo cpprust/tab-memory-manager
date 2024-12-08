@@ -70,7 +70,7 @@ pub fn spawn_tab_killer_thread(
             }
 
             let sleep_duration = tick - consumed_time;
-            println!("Tick consumed {:?}/{:?}\n", consumed_time, tick);
+            println!("Tick consumed: {:?} / {:?}\n", consumed_time, tick);
             sleep(sleep_duration);
         }
     })
