@@ -149,21 +149,31 @@ fn kill_tabs_by_rss_limit(status: &Status, config: &Config, total_rss: u64) {
             }
         }
 
-        killing_pids.iter().for_each(|pid| {
-            let signal = Signal::Term;
-            if let Some(process) = status.system.processes().get(pid) {
-                match process.kill_with(signal) {
-                    Some(success) => {
-                        if !success {
-                            eprintln!("Failed to send signal {} to {},", signal, pid);
+        killing_pids
+            .iter()
+            // Don't kill new tab
+            // .filter(|pid| {
+            //     if let Some(tab_info) = status.tab_infos.get(pid) {
+            //         tab_info.title != "New Tab"
+            //     } else {
+            //         false
+            //     }
+            // })
+            .for_each(|pid| {
+                let signal = Signal::Term;
+                if let Some(process) = status.system.processes().get(pid) {
+                    match process.kill_with(signal) {
+                        Some(success) => {
+                            if !success {
+                                eprintln!("Failed to send signal {} to {},", signal, pid);
+                            }
+                        }
+                        None => {
+                            eprintln!("The signal {} is not supported on this platform!", signal);
                         }
                     }
-                    None => {
-                        eprintln!("The signal {} is not supported on this platform!", signal);
-                    }
                 }
-            }
-        })
+            })
     }
 }
 
@@ -177,6 +187,14 @@ fn kill_tabs_by_background_time_limit(status: &mut Status, config: &Config) {
         .filter(|(_, &begin_background_timestamp)| {
             Duration::from_secs_f64((status.timestamp - begin_background_timestamp) / 1000.0)
                 > Duration::from_secs_f64(config.strategy.background_time_limit.max_secs)
+        })
+        // Don't kill new tab
+        .filter(|(pid, _)| {
+            if let Some(tab_info) = status.tab_infos.get(pid) {
+                tab_info.title != "New Tab"
+            } else {
+                false
+            }
         })
         .for_each(|(pid, _)| {
             if let Some(process) = status.system.processes().get(pid) {
@@ -195,6 +213,14 @@ fn kill_tabs_by_cpu_idle_time_limit(status: &mut Status, config: &Config) {
             Duration::from_secs_f64((status.timestamp - begin_cpu_idle_timestamp) / 1000.0)
                 > Duration::from_secs_f64(config.strategy.background_time_limit.max_secs)
         })
+        // Don't kill new tab
+        // .filter(|(pid, _)| {
+        //     if let Some(tab_info) = status.tab_infos.get(pid) {
+        //         tab_info.title != "New Tab"
+        //     } else {
+        //         false
+        //     }
+        // })
         .for_each(|(pid, _)| {
             if let Some(process) = status.system.processes().get(pid) {
                 if let Some(tab_info) = status.tab_infos.get(pid) {

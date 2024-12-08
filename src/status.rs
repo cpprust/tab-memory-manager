@@ -36,7 +36,6 @@ impl Status {
         let mut last_access_timestamps: HashMap<Pid, Timestamp> = self
             .tab_infos
             .iter()
-            .filter(|(_, tab_info)| tab_info.title != "New Tab")
             .map(|(&pid, tab_info)| {
                 if tab_info.active {
                     (pid, data_timestamp)
