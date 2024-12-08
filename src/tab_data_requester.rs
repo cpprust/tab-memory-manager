@@ -19,7 +19,7 @@ pub type Timestamp = f64;
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InputTabData {
+pub struct TabData {
     timestamp: Timestamp,
     tab_infos: Vec<TabInfo>,
 }
@@ -92,7 +92,7 @@ fn request_tab_data_from_browser_and_update_status(
         move |ws_msg| {
             debug_println!("Recieved a ws_msg!");
             if let Message::Text(msg) = ws_msg {
-                match serde_json::from_str::<InputTabData>(&msg) {
+                match serde_json::from_str::<TabData>(&msg) {
                     Ok(input_tab_data) => {
                         let status = &mut status.lock().unwrap();
                         status.system.refresh_all();
