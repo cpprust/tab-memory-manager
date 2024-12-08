@@ -25,14 +25,14 @@ pub enum KillTabStrategy {
     /// Kill the tab if it is in background for too long, this will not kill "New Tab"
     BackgroundTimeLimit,
     /// Kill the tab if it have not use cpu for too long
-    CpuIdleTime,
+    CpuIdleTimeLimit,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Strategy {
     pub rss_limit: RssLimit,
     pub background_time_limit: BackgroundTimeLimit,
-    pub cpu_idle_time: CpuIdleTime,
+    pub cpu_idle_time_limit: CpuIdleTimeLimit,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -46,7 +46,7 @@ pub struct BackgroundTimeLimit {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub struct CpuIdleTime {
+pub struct CpuIdleTimeLimit {
     pub max_secs: f64,
 }
 

@@ -55,7 +55,7 @@ max_secs = 86400.0
 
 # Kill the tab if it have not use cpu for too long
 # 🚧 Not implemented
-[strategy.cpu_idle_time]
+[strategy.cpu_idle_time_limit]
 # Range: 0.0 ~ inf
 max_secs = 86400.0
 ```

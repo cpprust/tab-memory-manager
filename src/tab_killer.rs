@@ -112,7 +112,7 @@ fn kill_tabs_by_strategies(status: Arc<Mutex<Status>>, config: &Config) {
                         status.lock().unwrap().timestamp,
                     );
                 }
-                KillTabStrategy::CpuIdleTime => {
+                KillTabStrategy::CpuIdleTimeLimit => {
                     eprintln!("Strategy cpu_idle_time not implemented!");
                 }
             }
