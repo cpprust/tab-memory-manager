@@ -31,6 +31,10 @@ Config is "~/.config/tab-memory-manager.toml" on Linux, check [config dir](https
 If it is gone or corrupted, it will be overwrite with default config.
 
 ```toml
+# The browser name
+# Example: "chromium"
+browser_name = "chromium"
+
 # Kill the most memory consuming tab in the background with the given strategy
 # Options: rss_limit, background_time_limit, cpu_idle_time_limit
 kill_tab_strategies = ["rss_limit"]
@@ -43,7 +47,7 @@ check_interval_secs = 1.0
 whitelist_audible = true
 
 # A list of regex, tab will not be kill if match any
-# Example: whitelist: ["https://docs.rs"]
+# Example: ["https://docs.rs"]
 whitelist = []
 
 # Kill the tab if all tabs total resident set size (physical memory usage) hit limit, kill in descending order

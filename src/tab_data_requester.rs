@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate};
 use ws::{listen, Message};
 
-use crate::{status::Status, BROWSER_NAME};
+use crate::status::Status;
 
 pub type BrowserInnerPid = u64;
 pub type Timestamp = f64;
@@ -60,12 +60,14 @@ pub fn spawn_tab_data_requester(
     status: Arc<Mutex<Status>>,
     update_req_reciever: Receiver<()>,
     update_result_sender: SyncSender<Result<(), String>>,
+    browser_name: String,
 ) -> JoinHandle<()> {
     spawn(move || {
         request_tab_data_from_browser_and_update_status(
             status,
             update_req_reciever,
             update_result_sender,
+            &browser_name,
         )
     })
 }
@@ -74,6 +76,7 @@ fn request_tab_data_from_browser_and_update_status(
     status: Arc<Mutex<Status>>,
     update_req_reciever: Receiver<()>,
     update_result_sender: SyncSender<Result<(), String>>,
+    browser_name: &String,
 ) {
     let update_req_reciever = Arc::new(Mutex::new(update_req_reciever));
     listen("127.0.0.1:60000", move |ws_msg_sender| {
@@ -110,7 +113,7 @@ fn request_tab_data_from_browser_and_update_status(
                             // Get new pid map
                             let mut browser_inner_pid_to_pid: HashMap<BrowserInnerPid, Pid> =
                                 HashMap::new();
-                            for process in status.system.processes_by_exact_name(BROWSER_NAME.as_ref()) {
+                            for process in status.system.processes_by_exact_name(browser_name.as_ref()) {
                                 let cmdline = match process.cmd().first() {
                                     Some(cmdline) => cmdline,
                                     None => {
@@ -176,7 +179,7 @@ fn request_tab_data_from_browser_and_update_status(
                                 None => continue,
                             };
                         }
-                        status.update(new_tab_infos, input_tab_data.timestamp);
+                        status.update(new_tab_infos, input_tab_data.timestamp,browser_name);
                         let _ = update_result_sender.try_send(Ok(()));
                     }
                     Err(e) => {

@@ -13,7 +13,6 @@ use tab_data_requester::spawn_tab_data_requester;
 use tab_killer::spawn_tab_killer_thread;
 
 const PROJECT_NAME: &str = "tab-memory-manager";
-const BROWSER_NAME: &str = "chromium";
 
 fn main() {
     let config = create_or_new_config();
@@ -29,6 +28,7 @@ fn main() {
         Arc::clone(&status),
         update_req_reciever,
         update_result_sender,
+        config.browser_name.clone(),
     );
 
     // Terminate tab by given strategy

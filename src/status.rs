@@ -5,7 +5,6 @@ use sysinfo::{Pid, System};
 use crate::{
     tab_data_requester::{TabInfo, Timestamp},
     tab_killer::Rss,
-    BROWSER_NAME,
 };
 
 /// App status that must be sharing between threads
@@ -19,13 +18,18 @@ pub struct Status {
 }
 
 impl Status {
-    pub fn update(&mut self, new_tab_infos: HashMap<Pid, TabInfo>, timestamp: Timestamp) {
+    pub fn update(
+        &mut self,
+        new_tab_infos: HashMap<Pid, TabInfo>,
+        timestamp: Timestamp,
+        browser_name: &String,
+    ) {
         self.tab_infos = new_tab_infos;
         self.timestamp = timestamp;
         // Clear stat if browser closed
         let browser_process_count = self
             .system
-            .processes_by_exact_name(BROWSER_NAME.as_ref())
+            .processes_by_exact_name(browser_name.as_ref())
             .count();
         if browser_process_count == 0 {
             self.tab_infos.clear();

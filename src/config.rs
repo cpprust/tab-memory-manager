@@ -7,6 +7,8 @@ use crate::PROJECT_NAME;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Config {
+    // The browser executable name
+    pub browser_name: String,
     pub kill_tab_strategies: Vec<KillTabStrategy>,
     // The interval of applying strategy, in secs
     pub check_interval_secs: f32,
