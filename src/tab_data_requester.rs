@@ -8,7 +8,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
-use sysinfo::{Pid, System};
+use sysinfo::Pid;
 use ws::{listen, Message};
 
 use crate::{status::Status, BROWSER_NAME};
@@ -93,18 +93,19 @@ fn request_tab_data_from_browser_and_update_status(
             if let Message::Text(msg) = ws_msg {
                 match serde_json::from_str::<InputTabData>(&msg) {
                     Ok(input_tab_data) => {
-                        let system = System::new_all();
+                        let status = &mut status.lock().unwrap();
+                        status.system.refresh_all();
 
                         // If given tab infos inner pid are the same as last time, use the old pid map
-                        let last_loop_browser_inner_pids: HashSet<BrowserInnerPid> = status.lock().unwrap().tab_infos.values().map(|tab_info| tab_info.browser_inner_pid).collect();
+                        let last_loop_browser_inner_pids: HashSet<BrowserInnerPid> = status.tab_infos.values().map(|tab_info| tab_info.browser_inner_pid).collect();
                         let same_tabs_as_last_update = input_tab_data.tab_infos.iter().all(|recieved_tab_info| last_loop_browser_inner_pids.contains(&recieved_tab_info.browser_inner_pid)) && input_tab_data.tab_infos.len() == last_loop_browser_inner_pids.len();
                         let browser_inner_pid_to_pid: HashMap<BrowserInnerPid, Pid> = if same_tabs_as_last_update {
-                             status.lock().unwrap().tab_infos.iter().map(|(pid, tab_info)| (tab_info.browser_inner_pid, *pid)).collect()
+                             status.tab_infos.iter().map(|(pid, tab_info)| (tab_info.browser_inner_pid, *pid)).collect()
                         } else {
                             // Get new pid map
                             let mut browser_inner_pid_to_pid: HashMap<BrowserInnerPid, Pid> =
                                 HashMap::new();
-                            for process in system.processes_by_exact_name(BROWSER_NAME.as_ref()) {
+                            for process in status.system.processes_by_exact_name(BROWSER_NAME.as_ref()) {
                                 let cmdline = match process.cmd().first() {
                                     Some(cmdline) => cmdline,
                                     None => {
@@ -168,8 +169,8 @@ fn request_tab_data_from_browser_and_update_status(
                             };
                             new_tab_infos.insert(pid, tab_info);
                         }
-                        (*status.lock().unwrap()).tab_infos = new_tab_infos;
-                        (*status.lock().unwrap()).timestamp = input_tab_data.timestamp;
+                        status.tab_infos = new_tab_infos;
+                        status.timestamp = input_tab_data.timestamp;
                         let _ = update_result_sender.try_send(Ok(()));
                     }
                     Err(e) => {

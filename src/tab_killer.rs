@@ -8,7 +8,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use sysinfo::{Pid, Signal, System};
+use sysinfo::{Pid, Signal};
 use thousands::Separable;
 
 use crate::{
@@ -77,17 +77,15 @@ pub fn spawn_tab_killer_thread(
 }
 
 fn kill_tabs_by_strategies(status: Arc<Mutex<Status>>, config: &Config) {
-    let system = System::new_all();
-    update_status(&status, &system);
+    let status = &mut status.lock().unwrap();
+    update_status(status);
     // Print stat
-    println!("{:?}", status.lock().unwrap());
+    println!("{:?}", status);
     let total_rss: u64 = status
-        .lock()
-        .unwrap()
         .tab_infos
         .keys()
         .map(|pid| {
-            if let Some(process) = system.processes().get(pid) {
+            if let Some(process) = status.system.processes().get(pid) {
                 process.memory()
             } else {
                 0
@@ -97,35 +95,25 @@ fn kill_tabs_by_strategies(status: Arc<Mutex<Status>>, config: &Config) {
     println!("total_rss: {}", total_rss.separate_with_commas());
 
     // Apply kill tab startegies
-    if status.lock().unwrap().tab_infos.len() > 0 {
+    if status.tab_infos.len() > 0 {
         for kill_tab_strategy in &config.kill_tab_strategies {
             // Apply strategy
             match kill_tab_strategy {
                 KillTabStrategy::RssLimit => {
-                    kill_tabs_by_rss_limit(&status, &config, &system, total_rss);
+                    kill_tabs_by_rss_limit(status, &config, total_rss);
                 }
                 KillTabStrategy::BackgroundTimeLimit => {
-                    kill_tabs_by_background_time_limit(
-                        &status.lock().unwrap().begin_background_timestamps,
-                        &config,
-                        &system,
-                        status.lock().unwrap().timestamp,
-                    );
+                    kill_tabs_by_background_time_limit(status, &config);
                 }
                 KillTabStrategy::CpuIdleTimeLimit => {
-                    eprintln!("Strategy cpu_idle_time not implemented!");
+                    kill_tabs_by_cpu_idle_time_limit(status, &config);
                 }
             }
         }
     }
 }
 
-fn kill_tabs_by_rss_limit(
-    status: &Arc<Mutex<Status>>,
-    config: &Config,
-    system: &System,
-    total_rss: u64,
-) {
+fn kill_tabs_by_rss_limit(status: &Status, config: &Config, total_rss: u64) {
     if total_rss > config.strategy.rss_limit.max_bytes {
         println!(
             "Hit the rss limit({}/{}), apply RssLimit strategy",
@@ -137,10 +125,10 @@ fn kill_tabs_by_rss_limit(
         let exceed_rss = total_rss - config.strategy.rss_limit.max_bytes;
         let mut expected_freed_rss = 0;
         let mut killing_pids = Vec::new();
-        let sorted_pid_rss = status.lock().unwrap().get_sorted_pid_rss(system);
+        let sorted_pid_rss = status.get_sorted_pid_rss();
         for &(pid, rss) in sorted_pid_rss.iter().rev() {
             if exceed_rss >= expected_freed_rss {
-                let url = status.lock().unwrap().tab_infos[&pid].url.clone();
+                let url = status.tab_infos[&pid].url.clone();
                 let in_whitelist = config.whitelist.iter().any(|regex| regex.is_match(&url));
                 if in_whitelist {
                     continue;
@@ -155,7 +143,7 @@ fn kill_tabs_by_rss_limit(
 
         killing_pids.iter().for_each(|pid| {
             let signal = Signal::Term;
-            if let Some(process) = system.processes().get(pid) {
+            if let Some(process) = status.system.processes().get(pid) {
                 match process.kill_with(signal) {
                     Some(success) => {
                         if !success {
@@ -172,30 +160,45 @@ fn kill_tabs_by_rss_limit(
 }
 
 /// Will not kill new tab, because the last_access_time is wrong
-fn kill_tabs_by_background_time_limit(
-    begin_background_timestamps: &HashMap<Pid, Timestamp>,
-    config: &Config,
-    system: &System,
-    data_timestamp: Timestamp,
-) {
+fn kill_tabs_by_background_time_limit(status: &mut Status, config: &Config) {
     let signal = Signal::Term;
-    begin_background_timestamps
+    status
+        .begin_background_timestamps
         .iter()
+        // Only left those tabs which in background too long
         .filter(|(_, &begin_background_timestamp)| {
-            Duration::from_secs_f64((data_timestamp - begin_background_timestamp) / 1000.0)
+            Duration::from_secs_f64((status.timestamp - begin_background_timestamp) / 1000.0)
                 > Duration::from_secs_f64(config.strategy.background_time_limit.max_secs)
         })
         .for_each(|(pid, _)| {
-            if let Some(process) = system.processes().get(pid) {
+            if let Some(process) = status.system.processes().get(pid) {
                 process.kill_with(signal);
             }
         });
 }
 
-fn update_status(status: &Arc<Mutex<Status>>, system: &System) {
-    let mut status = status.lock().unwrap();
+fn kill_tabs_by_cpu_idle_time_limit(status: &mut Status, config: &Config) {
+    let signal = Signal::Term;
+    status
+        .begin_cpu_idle_timestamps
+        .iter()
+        // Only left those tabs which cpu idle too long
+        .filter(|(_, &begin_cpu_idle_timestamp)| {
+            Duration::from_secs_f64((status.timestamp - begin_cpu_idle_timestamp) / 1000.0)
+                > Duration::from_secs_f64(config.strategy.background_time_limit.max_secs)
+        })
+        .for_each(|(pid, _)| {
+            //
+            if let Some(process) = status.system.processes().get(pid) {
+                process.kill_with(signal);
+            }
+        });
+}
+
+fn update_status(status: &mut Status) {
     // Clear stat if browser closed
-    let browser_process_count = system
+    let browser_process_count = status
+        .system
         .processes_by_exact_name(BROWSER_NAME.as_ref())
         .count();
     if browser_process_count == 0 {
@@ -224,4 +227,7 @@ fn update_status(status: &Arc<Mutex<Status>>, system: &System) {
             }
         });
     status.begin_background_timestamps = last_access_timestamps;
+
+    // Update begin_cpu_idle_timestamps
+    let data_timestamp = status.timestamp;
 }
