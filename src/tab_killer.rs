@@ -142,7 +142,7 @@ fn kill_tabs_by_rss_limit(status: &Status, config: &Config, total_rss: u64) {
             // })
             // Don't kill audible tab
             .filter(|(pid, _)| {
-                if config.whitelist_audible {
+                if config.whitelist_audible_tab {
                     if let Some(tab_info) = status.tab_infos.get(pid) {
                         !tab_info.audible
                     } else {
@@ -213,7 +213,7 @@ fn kill_tabs_by_background_time_limit(status: &mut Status, config: &Config) {
         })
         // Don't kill audible tab
         .filter(|pid| {
-            if config.whitelist_audible {
+            if config.whitelist_audible_tab {
                 if let Some(tab_info) = status.tab_infos.get(pid) {
                     !tab_info.audible
                 } else {
@@ -252,7 +252,7 @@ fn kill_tabs_by_cpu_idle_time_limit(status: &mut Status, config: &Config) {
         // })
         // Don't kill audible tab
         .filter(|pid| {
-            if config.whitelist_audible {
+            if config.whitelist_audible_tab {
                 if let Some(tab_info) = status.tab_infos.get(pid) {
                     !tab_info.audible
                 } else {
