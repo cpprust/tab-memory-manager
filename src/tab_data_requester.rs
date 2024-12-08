@@ -171,6 +171,7 @@ fn request_tab_data_from_browser_and_update_status(
                         }
                         status.tab_infos = new_tab_infos;
                         status.timestamp = input_tab_data.timestamp;
+                        update_status(status);
                         let _ = update_result_sender.try_send(Ok(()));
                     }
                     Err(e) => {
@@ -185,4 +186,59 @@ fn request_tab_data_from_browser_and_update_status(
         }
     })
     .unwrap();
+}
+
+fn update_status(status: &mut Status) {
+    // Clear stat if browser closed
+    let browser_process_count = status
+        .system
+        .processes_by_exact_name(BROWSER_NAME.as_ref())
+        .count();
+    if browser_process_count == 0 {
+        status.tab_infos.clear();
+    }
+
+    // Update begin_background_timestamps
+    let data_timestamp = status.timestamp;
+    let mut last_access_timestamps: HashMap<Pid, Timestamp> = status
+        .tab_infos
+        .iter()
+        .filter(|(_, tab_info)| tab_info.title != "New Tab")
+        .map(|(&pid, tab_info)| {
+            if tab_info.active {
+                (pid, data_timestamp)
+            } else {
+                (pid, tab_info.last_accessed)
+            }
+        })
+        .collect();
+    last_access_timestamps
+        .iter_mut()
+        .for_each(|(pid, last_accessd_time)| {
+            if let Some(&begin_background_timestamp) = status.begin_background_timestamps.get(pid) {
+                *last_accessd_time = last_accessd_time.max(begin_background_timestamp);
+            }
+        });
+    status.begin_background_timestamps = last_access_timestamps;
+
+    // Update begin_cpu_idle_timestamps
+    let new_begin_cpu_idle_timestamps: HashMap<Pid, Timestamp> = status
+        .tab_infos
+        .keys()
+        .filter_map(|&pid| match status.begin_cpu_idle_timestamps.get(&pid) {
+            Some(&old_begin_cpu_idle_timestamp) => {
+                if let Some(process) = status.system.processes().get(&pid) {
+                    if process.cpu_usage() == 0.0 {
+                        Some((pid, old_begin_cpu_idle_timestamp))
+                    } else {
+                        Some((pid, status.timestamp))
+                    }
+                } else {
+                    None
+                }
+            }
+            None => Some((pid, status.timestamp)),
+        })
+        .collect();
+    status.begin_cpu_idle_timestamps = new_begin_cpu_idle_timestamps;
 }

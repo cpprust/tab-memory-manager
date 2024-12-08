@@ -1,5 +1,4 @@
 use std::{
-    collections::HashMap,
     sync::{
         mpsc::{Receiver, SyncSender},
         Arc, Mutex,
@@ -8,13 +7,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-use sysinfo::{Pid, Signal};
+use sysinfo::Signal;
 use thousands::Separable;
 
 use crate::{
     config::{Config, KillTabStrategy},
-    tab_data_requester::Timestamp,
-    Status, BROWSER_NAME,
+    Status,
 };
 
 pub type Rss = u64;
@@ -78,7 +76,6 @@ pub fn spawn_tab_killer_thread(
 
 fn kill_tabs_by_strategies(status: Arc<Mutex<Status>>, config: &Config) {
     let status = &mut status.lock().unwrap();
-    update_status(status);
     // Print stat
     println!("{:?}", status);
     let total_rss: u64 = status
@@ -196,59 +193,4 @@ fn kill_tabs_by_cpu_idle_time_limit(status: &mut Status, config: &Config) {
                 }
             }
         });
-}
-
-fn update_status(status: &mut Status) {
-    // Clear stat if browser closed
-    let browser_process_count = status
-        .system
-        .processes_by_exact_name(BROWSER_NAME.as_ref())
-        .count();
-    if browser_process_count == 0 {
-        status.tab_infos.clear();
-    }
-
-    // Update begin_background_timestamps
-    let data_timestamp = status.timestamp;
-    let mut last_access_timestamps: HashMap<Pid, Timestamp> = status
-        .tab_infos
-        .iter()
-        .filter(|(_, tab_info)| tab_info.title != "New Tab")
-        .map(|(&pid, tab_info)| {
-            if tab_info.active {
-                (pid, data_timestamp)
-            } else {
-                (pid, tab_info.last_accessed)
-            }
-        })
-        .collect();
-    last_access_timestamps
-        .iter_mut()
-        .for_each(|(pid, last_accessd_time)| {
-            if let Some(&begin_background_timestamp) = status.begin_background_timestamps.get(pid) {
-                *last_accessd_time = last_accessd_time.max(begin_background_timestamp);
-            }
-        });
-    status.begin_background_timestamps = last_access_timestamps;
-
-    // Update begin_cpu_idle_timestamps
-    let new_begin_cpu_idle_timestamps: HashMap<Pid, Timestamp> = status
-        .tab_infos
-        .keys()
-        .filter_map(|&pid| match status.begin_cpu_idle_timestamps.get(&pid) {
-            Some(&old_begin_cpu_idle_timestamp) => {
-                if let Some(process) = status.system.processes().get(&pid) {
-                    if process.cpu_usage() == 0.0 {
-                        Some((pid, old_begin_cpu_idle_timestamp))
-                    } else {
-                        Some((pid, status.timestamp))
-                    }
-                } else {
-                    None
-                }
-            }
-            None => Some((pid, status.timestamp)),
-        })
-        .collect();
-    status.begin_cpu_idle_timestamps = new_begin_cpu_idle_timestamps;
 }

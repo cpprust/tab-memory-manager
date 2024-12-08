@@ -76,11 +76,7 @@ fn generate_output_tab_infos(status: &Arc<Mutex<Status>>) -> Vec<OutputTabInfo> 
                     rss: process.memory(),
                     foreground: tab_info.active,
                     cpu_usage: process.cpu_usage(),
-                    background_time_secs: if tab_info.active {
-                        0.0
-                    } else {
-                        (status.timestamp - begin_background_timestamp) / 1000.0
-                    },
+                    background_time_secs: (status.timestamp - begin_background_timestamp) / 1000.0,
                     cpu_idle_time_secs: (status.timestamp - begin_cpu_idle_timestamp) / 1000.0,
                 })
             } else {
