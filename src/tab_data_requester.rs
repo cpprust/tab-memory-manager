@@ -9,7 +9,7 @@ use std::{
 
 use debug_print::debug_println;
 use serde::{Deserialize, Serialize};
-use sysinfo::Pid;
+use sysinfo::{Pid, ProcessesToUpdate};
 use ws::{listen, Message};
 
 use crate::{status::Status, BROWSER_NAME};
@@ -96,6 +96,7 @@ fn request_tab_data_from_browser_and_update_status(
                     Ok(input_tab_data) => {
                         let status = &mut status.lock().unwrap();
                         status.system.refresh_all();
+                        status.system.refresh_processes(ProcessesToUpdate::All, true);
 
                         // If given tab infos inner pid are the same as last time, use the old pid map
                         let last_loop_browser_inner_pids: HashSet<BrowserInnerPid> = status.tab_infos.values().map(|tab_info| tab_info.browser_inner_pid).collect();
@@ -163,12 +164,14 @@ fn request_tab_data_from_browser_and_update_status(
                         // Update tab infos
                         let mut new_tab_infos = HashMap::<Pid, TabInfo>::new();
                         for tab_info in input_tab_data.tab_infos {
-                            let pid = browser_inner_pid_to_pid.get(&tab_info.browser_inner_pid);
-                            let pid = match pid {
-                                Some(pid) => *pid,
+                            match browser_inner_pid_to_pid.get(&tab_info.browser_inner_pid) {
+                                Some(&pid) => {
+                                    if status.system.processes().contains_key(&pid) {
+                                        new_tab_infos.insert(pid, tab_info);
+                                    }
+                                },
                                 None => continue,
                             };
-                            new_tab_infos.insert(pid, tab_info);
                         }
                         status.update(new_tab_infos, input_tab_data.timestamp);
                         let _ = update_result_sender.try_send(Ok(()));
