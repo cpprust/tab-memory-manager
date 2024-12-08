@@ -124,7 +124,7 @@ View the memory usage of each tab, as shown in the example below.
 
   After connected, press enter will request for tab data. 
 
-- Get tab data from tab memory manager
+- Get tab data from tab memory manager (need `curl`)
 
   ```
   curl http://127.0.0.1:60001
