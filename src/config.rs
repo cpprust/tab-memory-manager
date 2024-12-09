@@ -52,6 +52,7 @@ pub struct BackgroundTimeLimit {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct CpuIdleTimeLimit {
     pub max_secs: f64,
+    pub max_idle_cpu_usage: f64,
 }
 
 pub fn create_or_new_config() -> Config {

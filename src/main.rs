@@ -26,6 +26,7 @@ fn main() {
     // Waiting for json data and update tab_infos, bind on ws://127.0.0.1:60000
     let tab_data_requester = spawn_tab_data_requester(
         Arc::clone(&status),
+        config.clone(),
         update_req_reciever,
         update_result_sender,
         config.browser_name.clone(),

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate};
 use ws::{listen, Message};
 
-use crate::status::Status;
+use crate::{config::Config, status::Status};
 
 pub type BrowserInnerPid = u64;
 pub type Timestamp = f64;
@@ -58,6 +58,7 @@ pub struct MutedInfo {
 
 pub fn spawn_tab_data_requester(
     status: Arc<Mutex<Status>>,
+    config: Config,
     update_req_reciever: Receiver<()>,
     update_result_sender: SyncSender<Result<(), String>>,
     browser_name: String,
@@ -65,6 +66,7 @@ pub fn spawn_tab_data_requester(
     spawn(move || {
         request_tab_data_from_browser_and_update_status(
             status,
+            &config,
             update_req_reciever,
             update_result_sender,
             &browser_name,
@@ -74,6 +76,7 @@ pub fn spawn_tab_data_requester(
 
 fn request_tab_data_from_browser_and_update_status(
     status: Arc<Mutex<Status>>,
+    config: &Config,
     update_req_reciever: Receiver<()>,
     update_result_sender: SyncSender<Result<(), String>>,
     browser_name: &String,
@@ -179,7 +182,7 @@ fn request_tab_data_from_browser_and_update_status(
                                 None => continue,
                             };
                         }
-                        status.update(new_tab_infos, input_tab_data.timestamp,browser_name);
+                        status.update(config, new_tab_infos, input_tab_data.timestamp,browser_name);
                         let _ = update_result_sender.try_send(Ok(()));
                     }
                     Err(e) => {

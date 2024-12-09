@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use sysinfo::{Pid, System};
 
 use crate::{
+    config::Config,
     tab_data_requester::{TabInfo, Timestamp},
     tab_killer::Rss,
 };
@@ -20,6 +21,7 @@ pub struct Status {
 impl Status {
     pub fn update(
         &mut self,
+        config: &Config,
         new_tab_infos: HashMap<Pid, TabInfo>,
         timestamp: Timestamp,
         browser_name: &String,
@@ -65,9 +67,13 @@ impl Status {
             .filter_map(|&pid| match self.begin_cpu_idle_timestamps.get(&pid) {
                 Some(&old_begin_cpu_idle_timestamp) => {
                     if let Some(process) = self.system.processes().get(&pid) {
-                        if process.cpu_usage() == 0.0 {
+                        if (process.cpu_usage() as f64)
+                            <= config.strategy.cpu_idle_time_limit.max_idle_cpu_usage
+                        {
+                            // Still idle
                             Some((pid, old_begin_cpu_idle_timestamp))
                         } else {
+                            // Not idle
                             Some((pid, self.timestamp))
                         }
                     } else {

@@ -25,9 +25,12 @@ max_bytes = 2_000_000_000
 # Kill the tab if it is in background for too long, this will not kill "New Tab"
 [strategy.background_time_limit]
 # Range: 0.0 ~ inf
-max_secs = 3600.0
+max_secs = 60.0
 
 # Kill the tab if it have not use cpu for too long
 [strategy.cpu_idle_time_limit]
 # Range: 0.0 ~ inf
-max_secs = 3600.0
+max_secs = 60.0
+# The max cpu usage that consider as idle
+# Range: 0.0 ~ inf
+max_idle_cpu_usage = 5.0
