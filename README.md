@@ -1,6 +1,6 @@
 # tab-memory-manager
 
-fork from https://github.com/WuTa0209/Google_Chrome_Memory_Manager
+Fork from https://github.com/WuTa0209/Google_Chrome_Memory_Manager
 
 A memory management strategy more aggressive than Chromium's native memory management mechanism.
 
