@@ -55,7 +55,7 @@ pub struct CpuIdleTimeLimit {
     pub max_idle_cpu_usage: f64,
 }
 
-pub fn create_or_new_config() -> Config {
+pub fn read_or_create_new_config() -> Config {
     let config_dir = dirs::config_dir().unwrap();
     let config_path = config_dir.join(format!("{PROJECT_NAME}.toml"));
     let config = read_config(&config_path);
