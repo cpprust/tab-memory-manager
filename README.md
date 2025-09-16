@@ -88,7 +88,7 @@ View the memory usage of each tab, as shown in the example below.
 
 - Change "/etc/grafana.ini"
 
-  Change (Remember to remove semicolon)
+  Change (Remember to remove leading semicolon)
 
   ```
   ;min_refresh_interval = 5s
